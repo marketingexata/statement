@@ -284,7 +284,7 @@
               Auto-Save
             </span>
           </div>
-          <p class="text-[11px] text-slate-500 hidden sm:block">Copy pesan dari WhatsApp langsung ke bentuk E-Statement</p>
+          <p class="text-[11px] text-slate-500 hidden sm:block">Copy paste pesan dari WhatsApp otomatis jadi format E-Statement</p>
         </div>
       </div>
 
@@ -310,7 +310,7 @@
         <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">1</span>
-            <h2 class="font-bold text-slate-800 text-sm">Copy-Paste Pesan WhatsApp disini</h2>
+            <h2 class="font-bold text-slate-800 text-sm">Copy-Paste pesan WhatsApp disini</h2>
           </div>
           <div class="flex items-center gap-1.5">
             <button onclick="loadSampleWhatsApp()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition">
@@ -349,7 +349,7 @@
         <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">2</span>
-            <h2 class="font-bold text-slate-800 text-sm">Pilih Template E-Statement Bank</h2>
+            <h2 class="font-bold text-slate-800 text-sm">Pilih Template E-Statement</h2>
           </div>
         </div>
 
@@ -477,7 +477,7 @@
               <i data-lucide="image" class="w-4 h-4 text-blue-600"></i>
               <span>Sumber Template</span>
             </button>
-            <button onclick="openDatabaseModal()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition" title="Kelola Database Alamat Kanca/Kanwil Bank B">
+            <button onclick="openDatabaseModal()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition" title="Kelola Database Alamat Kanca/Kanwil BRI">
               <i data-lucide="database" class="w-4 h-4 text-indigo-600"></i>
               <span>Database BRI</span>
               <span id="dbCountBadge" class="px-1.5 py-0.2 bg-indigo-100 text-indigo-700 rounded-md text-[10px]">0</span>
@@ -660,7 +660,7 @@
             <i data-lucide="database" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-base">Database Alamat Unit Kerja — Bank BRI (Kanca / Kanwil)</h3>
+            <h3 class="font-bold text-slate-900 text-base">Database Alamat Unit Kerja — Bank B (Kanca / Kanwil)</h3>
             <p class="text-xs text-slate-500">Pencocokan otomatis Poin 2 berdasarkan kata kunci alamat dari pesan WhatsApp</p>
           </div>
         </div>
@@ -750,8 +750,8 @@
             <i data-lucide="image" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-900 text-base">Sumber Gambar Template E-Statement</h3>
-            <p class="text-xs text-slate-500">Gunakan Template Vektor Bersih Bawaan atau Load File PNG dari Folder / Upload</p>
+            <h3 class="font-bold text-slate-900 text-base">Sumber Gambar Template Statement (A – E)</h3>
+            <p class="text-xs text-slate-500">Gunakan Template Vektor Bersih Bawaan atau Load File PNG dari Folder GitHub / Upload</p>
           </div>
         </div>
         <button onclick="closeTemplateAssetsModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
@@ -766,8 +766,14 @@
             Integrasi Folder GitHub:
           </p>
           <p class="text-[11px] leading-relaxed">
-            Dashboard ini menggunakan Template Vektor Bersih Presisi (A–E) tanpa kotak merah/biru. Jika Anda mengupload 5 file gambar template ke folder GitHub, Anda dapat mengaktifkannya di sini.
+            Saat halaman dibuka, dashboard otomatis memuat gambar template tiap bank dari link default di kode (<b>TEMPLATE_DEFAULT_LINKS</b>), atau dari folder GitHub bila link default kosong. Kalau gambar tidak ditemukan, otomatis dipakai template vektor bawaan. Isi kolom link di tiap bank di bawah untuk menggantinya tanpa mengubah kode, atau pakai Upload untuk gambar dari perangkatmu.
           </p>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="templateFolderInput" class="font-bold text-slate-800">Link folder GitHub template (opsional)</label>
+          <input id="templateFolderInput" type="text" placeholder="https://marketingexata.github.io/statement/template%20statement/" onchange="setTemplateFolderUrl(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs" />
+          <p class="text-[11px] text-slate-500">Kosongkan jika gambar berada di folder yang sama dengan file dashboard ini. Pengaturan ini tersimpan di browser ini; untuk membuatnya permanen, isi <b>TEMPLATE_FOLDER_URL</b> di dalam kode.</p>
         </div>
 
         <div class="space-y-3" id="templateAssetConfigList"></div>
@@ -919,6 +925,77 @@
       'banjarmasin': { provinsi: 'KALIMANTAN SELATAN', kodepos: '70111' },
       'pontianak': { provinsi: 'KALIMANTAN BARAT', kodepos: '78111' }
     };
+
+    /*************************************************************************
+     * GAMBAR TEMPLATE OTOMATIS DARI FOLDER GITHUB
+     * Saat halaman dibuka, dashboard otomatis memuat 5 gambar template di bawah ini.
+     * Jika gambar tidak ditemukan, otomatis dipakai template vektor bawaan.
+     *
+     * CARA PAKAI:
+     *  1) Paling mudah: taruh file dashboard ini DAN 5 gambar template di folder yang sama
+     *     di repo GitHub (aktifkan GitHub Pages). Biarkan TEMPLATE_FOLDER_URL kosong.
+     *  2) Atau isi TEMPLATE_FOLDER_URL dengan link folder GitHub, contoh:
+     *       'https://github.com/NAMAKAMU/NAMAREPO/tree/main/templates'
+     *     (link biasa akan otomatis diubah menjadi link raw.githubusercontent.com).
+     *  3) Ubah nama file di TEMPLATE_FILE_NAMES bila nama file kamu berbeda.
+     *     Boleh juga diisi link gambar lengkap (https://...) untuk masing-masing bank.
+     *************************************************************************/
+    const TEMPLATE_FOLDER_URL = '';
+
+    // LINK DEFAULT PER BANK: tempel link gambar template masing-masing bank di sini.
+    // Dipakai sebagai gambar bawaan sebelum user mengunggah gambar sendiri / memilih folder.
+    // Contoh: A: 'https://raw.githubusercontent.com/NAMAKAMU/NAMAREPO/main/templates/bank-a.png'
+    // (link halaman GitHub biasa yang memuat /blob/ juga otomatis diubah menjadi link raw).
+    // Kosongkan salah satu bank untuk memakai folder / nama file di bawah.
+    const TEMPLATE_DEFAULT_LINKS = {
+      A: 'https://marketingexata.github.io/statement/template%20statement/bankA.png',
+      B: 'https://marketingexata.github.io/statement/template%20statement/bankB.png',
+      C: 'https://marketingexata.github.io/statement/template%20statement/bankC.png',
+      D: 'https://marketingexata.github.io/statement/template%20statement/bankD.png',
+      E: 'https://marketingexata.github.io/statement/template%20statement/bankE.png'
+    };
+
+    const TEMPLATE_FILE_NAMES = {
+      A: 'Template_Statement_Bank_A_Kosong.png',
+      B: 'Template_Statement_Bank_B_Kosong.png',
+      C: 'Template_Statement_Bank_C_Kosong.png',
+      D: 'Template_Statement_Bank_D_Kosong.png',
+      E: 'Template_Statement_Bank_E_Kosong.png'
+    };
+
+    // Ubah link halaman GitHub (tree/blob) menjadi link raw agar gambar bisa dimuat langsung.
+    function normalizeGithubUrl(url) {
+      const u = (url || '').trim();
+      const m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree|blob)\/([^\/]+)\/?(.*)$/i);
+      if (m) return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`;
+      return u;
+    }
+
+    // Urutan prioritas sumber gambar (selama mode bukan "Upload" / "Vektor Bawaan"):
+    //  1) Link per bank yang diisi user di jendela Sumber Template
+    //  2) Link folder yang diisi user di jendela Sumber Template
+    //  3) TEMPLATE_DEFAULT_LINKS (link default per bank di kode)
+    //  4) TEMPLATE_FOLDER_URL + nama file (di kode)
+    //  5) Folder yang sama dengan file dashboard ini
+    function resolveTemplateImageUrl(exp) {
+      const userLink = ((appState.templateLinks || {})[exp] || '').trim();
+      if (userLink) return normalizeGithubUrl(userLink);
+
+      const file = (TEMPLATE_FILE_NAMES[exp] || '').trim();
+      const cleanFile = file.replace(/^\.?\//, '');
+      const userFolder = (appState.templateFolderUrl || '').trim();
+      if (userFolder) {
+        return `${normalizeGithubUrl(userFolder).replace(/\/+$/, '')}/${cleanFile}`;
+      }
+
+      const defaultLink = (TEMPLATE_DEFAULT_LINKS[exp] || '').trim();
+      if (defaultLink) return normalizeGithubUrl(defaultLink);
+
+      if (/^https?:\/\//i.test(file)) return normalizeGithubUrl(file);
+      if (!file) return '';
+      const codeFolder = normalizeGithubUrl(TEMPLATE_FOLDER_URL || '').replace(/\/+$/, '');
+      return codeFolder ? `${codeFolder}/${cleanFile}` : `./${cleanFile}`;
+    }
 
     /*************************************************************************
      * LOGO BANK (menggantikan huruf A–E di bagian "Pilih Template Bank")
@@ -1078,6 +1155,9 @@
       return {
         rawWhatsapp: `1. Nama bank = B\n2. Alamat = Jl.Raya Bekasi Km.21,Ruko No.A2/18-19,Rw.3 kec.cakung\n3. Kantor cabang = Pulogadung trade center\n4. No. rekening = 7080507857\n5. Nama pengguna = Ago Hardianto Putra\n6. Alamat lengkap indonesia = Plumbon Rt.03/10 Plumbon Mojolaban Sukoharjo`,
         activeExpedition: 'B',
+        templateFolderUrl: '',
+        templateLinks: {},
+        githubTemplatesDefault: true,
         snapEnabled: true,
         showGuides: true,
         selectedBoxId: null,
@@ -1154,11 +1234,11 @@
         layouts: getDefaultLayouts(),
 
         templateSources: {
-          A: { mode: 'builtin', githubFile: 'Template_Statement_Bank_A_Kosong.png', customDataUrl: '' },
-          B: { mode: 'builtin', githubFile: 'Template_Statement_Bank_B_Kosong.png', customDataUrl: '' },
-          C: { mode: 'builtin', githubFile: 'Template_Statement_Bank_C_Kosong.png', customDataUrl: '' },
-          D: { mode: 'builtin', githubFile: 'Template_Statement_Bank_D_Kosong.png', customDataUrl: '' },
-          E: { mode: 'builtin', githubFile: 'Template_Statement_Bank_E_Kosong.png', customDataUrl: '' }
+          A: { mode: 'github', githubFile: 'Template_Statement_Bank_A_Kosong.png', customDataUrl: '' },
+          B: { mode: 'github', githubFile: 'Template_Statement_Bank_B_Kosong.png', customDataUrl: '' },
+          C: { mode: 'github', githubFile: 'Template_Statement_Bank_C_Kosong.png', customDataUrl: '' },
+          D: { mode: 'github', githubFile: 'Template_Statement_Bank_D_Kosong.png', customDataUrl: '' },
+          E: { mode: 'github', githubFile: 'Template_Statement_Bank_E_Kosong.png', customDataUrl: '' }
         }
       };
     }
@@ -1260,8 +1340,17 @@
               E: { ...init.templatesData.E, ...(parsed.templatesData?.E || {}) }
             },
             layouts: normalizeLayouts(parsed.layouts || init.layouts),
-            templateSources: { ...init.templateSources, ...(parsed.templateSources || {}) }
+            templateSources: { ...init.templateSources, ...(parsed.templateSources || {}) },
+            templateLinks: { ...(parsed.templateLinks || {}) }
           };
+          // Migrasi sekali: data lama yang masih memakai "Vektor Bawaan" dialihkan ke mode otomatis (folder GitHub)
+          if (!parsed.githubTemplatesDefault) {
+            ['A', 'B', 'C', 'D', 'E'].forEach(k => {
+              const src = appState.templateSources[k];
+              if (src && src.mode === 'builtin') src.mode = 'github';
+            });
+          }
+          appState.githubTemplatesDefault = true;
           // Migrasi sekali: data lama Bank A/C/D yang tersimpan ikut diberi awalan "KCP"
           if (!appState.kcpPrefixApplied) {
             ['A', 'C', 'D'].forEach(k => {
@@ -1628,11 +1717,11 @@
     }
 
     const EXPEDITION_META = {
-      A: { name: 'BANK A', fontLabel: 'Font: Montserrat Bold' },
-      B: { name: 'BANK B', fontLabel: 'Font: Arial Bold' },
-      C: { name: 'BANK C', fontLabel: 'Font: Calibri' },
-      D: { name: 'BANK D', fontLabel: 'Font: Gilroy Medium' },
-      E: { name: 'BANK E', fontLabel: 'Font: Calibri Light' }
+      A: { name: 'BCA', fontLabel: 'Font: Montserrat Bold' },
+      B: { name: 'BRI', fontLabel: 'Font: Arial Bold' },
+      C: { name: 'BNI', fontLabel: 'Font: Calibri' },
+      D: { name: 'MANDIRI', fontLabel: 'Font: Gilroy Medium' },
+      E: { name: 'BSI', fontLabel: 'Font: Calibri Light' }
     };
 
     function selectExpedition(exp) {
@@ -2123,15 +2212,23 @@
       canvasEl.classList.toggle('show-guides', !!appState.showGuides);
       canvasEl.classList.toggle('guides-idle', !previewGuidesActive);
 
-      if (srcCfg.mode === 'custom' && srcCfg.customDataUrl) {
-        bgLayer.innerHTML = `<img src="${srcCfg.customDataUrl}" alt="Template ${exp}" class="w-full h-full object-fill" />`;
-      } else if (srcCfg.mode === 'github' && srcCfg.githubFile) {
-        bgLayer.innerHTML = `
-          <img src="./${srcCfg.githubFile}" alt="Template GitHub ${exp}" class="w-full h-full object-fill" onerror="this.style.display='none'; document.getElementById('fallbackBuiltinBg').style.display='block';" />
-          <div id="fallbackBuiltinBg" style="display:none;" class="w-full h-full">${getScaledBuiltinTemplateHTML(exp)}</div>
-        `;
-      } else {
-        bgLayer.innerHTML = getScaledBuiltinTemplateHTML(exp);
+      // Latar hanya dibuat ulang bila sumbernya berubah (hindari berkedip saat menggeser kotak).
+      const imgUrl = srcCfg.mode === 'github' ? resolveTemplateImageUrl(exp) : '';
+      const customKey = srcCfg.customDataUrl ? `${srcCfg.customDataUrl.length}:${srcCfg.customDataUrl.slice(-40)}` : '';
+      const bgSig = [exp, srcCfg.mode, imgUrl, customKey, layout.canvasWidth, layout.canvasHeight].join('|');
+      if (bgLayer.dataset.sig !== bgSig) {
+        if (srcCfg.mode === 'custom' && srcCfg.customDataUrl) {
+          bgLayer.innerHTML = `<img src="${srcCfg.customDataUrl}" alt="Template ${exp}" class="w-full h-full object-fill" />`;
+        } else if (srcCfg.mode === 'github' && imgUrl) {
+          const crossAttr = /^https?:\/\//i.test(imgUrl) ? ' crossorigin="anonymous"' : '';
+          bgLayer.innerHTML = `
+            <img src="${escapeHtml(imgUrl)}"${crossAttr} alt="Template GitHub ${exp}" class="w-full h-full object-fill" onerror="this.style.display='none'; document.getElementById('fallbackBuiltinBg').style.display='block';" />
+            <div id="fallbackBuiltinBg" style="display:none;" class="w-full h-full">${getScaledBuiltinTemplateHTML(exp)}</div>
+          `;
+        } else {
+          bgLayer.innerHTML = getScaledBuiltinTemplateHTML(exp);
+        }
+        bgLayer.dataset.sig = bgSig;
       }
 
       applyBgAdjust();
@@ -2767,7 +2864,12 @@
 
     function openTemplateAssetsModal() {
       const m = document.getElementById('templateAssetsModal');
-      if (m) { m.classList.remove('hidden'); renderTemplateAssetConfigList(); }
+      if (m) {
+        m.classList.remove('hidden');
+        const folderInput = document.getElementById('templateFolderInput');
+        if (folderInput) folderInput.value = appState.templateFolderUrl || '';
+        renderTemplateAssetConfigList();
+      }
     }
     function closeTemplateAssetsModal() {
       const m = document.getElementById('templateAssetsModal');
@@ -2778,16 +2880,19 @@
       const listEl = document.getElementById('templateAssetConfigList');
       if (!listEl) return;
       listEl.innerHTML = ['A', 'B', 'C', 'D', 'E'].map(exp => {
-        const cfg = appState.templateSources[exp] || { mode: 'builtin', githubFile: `Template_Statement_Bank_${exp}_Kosong.png` };
+        const cfg = appState.templateSources[exp] || { mode: 'github' };
+        const resolvedUrl = resolveTemplateImageUrl(exp);
         return `
           <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div class="font-bold text-slate-800 text-xs">Template Bank ${exp}</div>
-              <div class="text-[11px] text-slate-500 font-mono">./${cfg.githubFile}</div>
+              <div class="text-[11px] text-slate-500 font-mono break-all">${escapeHtml(resolvedUrl)}</div>
+              <div id="tplStatus-${exp}" class="text-[11px] font-semibold text-slate-400">Memeriksa…</div>
+              <input type="text" value="${escapeHtml((appState.templateLinks || {})[exp] || '')}" placeholder="Link gambar Bank ${exp} (opsional)" onchange="setTemplateLink('${exp}', this.value)" class="mt-1.5 w-full sm:w-80 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-[11px]" />
             </div>
             <div class="flex flex-wrap items-center gap-1.5">
               <button onclick="setTemplateSourceMode('${exp}', 'builtin')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'builtin' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}">Vektor Bawaan</button>
-              <button onclick="setTemplateSourceMode('${exp}', 'github')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'github' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}">Folder GitHub</button>
+              <button onclick="setTemplateSourceMode('${exp}', 'github')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'github' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}">Link / Folder (otomatis)</button>
               <label class="cursor-pointer px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'custom' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'}">
                 <span>Upload</span>
                 <input type="file" accept="image/*" class="hidden" onchange="handleCustomTemplateUpload(event, '${exp}')" />
@@ -2796,6 +2901,34 @@
           </div>
         `;
       }).join('');
+
+      // Cek apakah tiap gambar benar-benar ditemukan di folder
+      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+        const statusEl = document.getElementById(`tplStatus-${exp}`);
+        const url = resolveTemplateImageUrl(exp);
+        if (!statusEl || !url) return;
+        const probe = new Image();
+        probe.onload = () => { statusEl.textContent = `✓ Ditemukan (${probe.naturalWidth} × ${probe.naturalHeight} px)`; statusEl.className = 'text-[11px] font-semibold text-emerald-600'; };
+        probe.onerror = () => { statusEl.textContent = '✕ Tidak ditemukan — memakai template vektor bawaan'; statusEl.className = 'text-[11px] font-semibold text-rose-600'; };
+        probe.src = url;
+      });
+    }
+
+    function setTemplateLink(exp, value) {
+      if (!appState.templateLinks) appState.templateLinks = {};
+      appState.templateLinks[exp] = (value || '').trim();
+      renderTemplateAssetConfigList();
+      renderCanvas();
+      saveStateToStorage();
+      showToast(appState.templateLinks[exp] ? `Link gambar Bank ${exp} disimpan` : `Link gambar Bank ${exp} dikosongkan`, 'success');
+    }
+
+    function setTemplateFolderUrl(value) {
+      appState.templateFolderUrl = (value || '').trim();
+      renderTemplateAssetConfigList();
+      renderCanvas();
+      saveStateToStorage();
+      showToast(appState.templateFolderUrl ? 'Link folder template disimpan' : 'Folder template: sama dengan file dashboard', 'success');
     }
 
     function setTemplateSourceMode(exp, mode) {
