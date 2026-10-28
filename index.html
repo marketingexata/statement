@@ -1,0 +1,3173 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Editor E-Statement</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter (UI), Montserrat (Bank A), Carlito/Calibri fallback, Outfit/Gilroy fallback -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Gilroy CDN Fallback -->
+  <link href="https://fonts.cdnfonts.com/css/gilroy-bold" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- html2canvas & jsPDF for high-res PNG & A4 PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --ui-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      font-family: var(--ui-font);
+      background-color: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+
+    /* Custom Font Classes for each Bank Template */
+    .font-bank-A {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+    }
+    .font-bank-B {
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 700;
+    }
+    .font-bank-C {
+      font-family: 'Calibri', 'Carlito', 'Segoe UI', sans-serif;
+      font-weight: 400;
+    }
+    .font-bank-D {
+      font-family: 'Gilroy-Medium', 'Gilroy', 'Plus Jakarta Sans', sans-serif;
+      font-weight: 500;
+    }
+    .font-bank-E {
+      font-family: 'Calibri Light', 'Calibri', 'Carlito', 'Segoe UI', sans-serif;
+      font-weight: 300;
+    }
+
+    /* Interactive Overlay Box on Statement Canvas */
+    .canvas-field-box {
+      position: absolute;
+      user-select: none;
+      cursor: grab;
+      box-sizing: border-box;
+      transition: box-shadow 0.12s ease, background-color 0.12s ease;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .canvas-field-box:active {
+      cursor: grabbing;
+    }
+
+    /* Show guide borders when editing mode is active */
+    .show-guides .canvas-field-box.type-auto {
+      border: 1.5px dashed rgba(239, 68, 68, 0.75);
+      background-color: rgba(254, 226, 226, 0.18);
+    }
+
+    .show-guides .canvas-field-box.type-manual {
+      border: 1.5px dashed rgba(37, 99, 235, 0.75);
+      background-color: rgba(219, 234, 254, 0.18);
+    }
+
+    .canvas-field-box.selected-box {
+      border: 2px solid #4f46e5 !important;
+      background-color: rgba(79, 70, 229, 0.08) !important;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+      z-index: 35;
+    }
+
+    /* Badge label on top corner of each box when guides are visible */
+    .field-badge {
+      display: none;
+      position: absolute;
+      top: -18px;
+      left: -2px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #fff;
+      white-space: nowrap;
+      pointer-events: none;
+      line-height: 1.3;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+
+    .show-guides .field-badge,
+    .canvas-field-box.selected-box .field-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .type-auto .field-badge {
+      background-color: #ef4444;
+    }
+
+    .type-manual .field-badge {
+      background-color: #2563eb;
+    }
+
+    /* Resize Handles */
+    .resize-handle {
+      display: none;
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      background-color: #ffffff;
+      border: 2px solid #4f46e5;
+      border-radius: 50%;
+      z-index: 40;
+    }
+
+    .canvas-field-box.selected-box .resize-handle {
+      display: block;
+    }
+
+    .handle-nw { top: -5px; left: -5px; cursor: nwse-resize; }
+    .handle-ne { top: -5px; right: -5px; cursor: nesw-resize; }
+    .handle-sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+    .handle-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+    .handle-e  { top: 50%; right: -5px; transform: translateY(-50%); cursor: ew-resize; border-radius: 2px; height: 14px; }
+    .handle-s  { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize; border-radius: 2px; width: 14px; }
+
+    /* Content Editable inside field box */
+    .field-content {
+      width: 100%;
+      height: 100%;
+      outline: none;
+      word-break: break-word;
+      overflow: visible;
+    }
+
+    .field-content[contenteditable="true"] {
+      cursor: text;
+      background-color: rgba(255, 255, 255, 0.85);
+      border-radius: 2px;
+      padding: 1px 2px;
+    }
+
+    /* Snap Alignment Lines */
+    .snap-line-x, .snap-line-y {
+      position: absolute;
+      background-color: #ec4899;
+      pointer-events: none;
+      z-index: 50;
+      display: none;
+    }
+    .snap-line-x {
+      height: 1px;
+      left: 0;
+      right: 0;
+    }
+    .snap-line-y {
+      width: 1px;
+      top: 0;
+      bottom: 0;
+    }
+
+    /* Export Clean Mode: strictly hides all UI helpers during PNG/PDF capture */
+    .export-clean-mode .canvas-field-box {
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .export-clean-mode .field-badge,
+    .export-clean-mode .resize-handle,
+    .export-clean-mode .snap-line-x,
+    .export-clean-mode .snap-line-y,
+    .export-clean-mode .canvas-grid-layer {
+      display: none !important;
+    }
+
+    /* ===== Mode "idle": panduan (garis, label, handle) disembunyikan saat user klik di luar preview ===== */
+    .guides-idle .canvas-field-box,
+    .guides-idle .canvas-field-box.selected-box {
+      border-color: transparent !important;
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+    .guides-idle .field-badge,
+    .guides-idle .resize-handle,
+    .guides-idle .snap-line-x,
+    .guides-idle .snap-line-y {
+      display: none !important;
+    }
+
+    /* Kanvas besar (mis. 2217px) tidak boleh melebarkan halaman: preview selalu diskalakan agar muat */
+    main > section { min-width: 0; }
+    #previewViewport { min-width: 0; max-width: 100%; width: 100%; overflow: hidden; }
+    #previewOuterWrapper { min-width: 0; overflow: hidden !important; }
+
+    /* ===== Layar HP / tablet: preview menempel (freeze) di bagian atas halaman ===== */
+    @media (max-width: 1279px) {
+      main { display: flex !important; flex-direction: column; }
+      #previewSection { display: contents; }
+      #previewViewport {
+        position: sticky;
+        top: 65px; /* tepat di bawah header (h-16 + border) */
+        z-index: 30;
+        order: -2;
+        box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.45);
+      }
+      #previewToolbarCard { order: -1; }
+      #previewFooter { display: none !important; }
+    }
+    @media (max-width: 639px) {
+      #previewViewport { padding: 0.5rem; }
+      #previewLegend { display: none; }
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Watermark Pattern for Bank B */
+    .bank-b-watermark {
+      background-image: radial-gradient(rgba(167, 212, 230, 0.16) 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+
+    /* Grid lines for Bank E */
+    .bank-e-grid {
+      background-size: 120px 24px;
+      background-image:
+        linear-gradient(to right, rgba(203, 213, 225, 0.38) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(203, 213, 225, 0.38) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-[1600px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+      <!-- Brand Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+          <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-slate-900 text-sm sm:text-base tracking-tight">Editor E-Statement</h1>
+            <span class="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Auto-Save
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 hidden sm:block">Copy pesan dari WhatsApp langsung ke bentuk E-Statement</p>
+        </div>
+      </div>
+
+      <!-- Right Action Buttons -->
+      <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <!-- Buat Baru / Reset All Button -->
+        <button onclick="openConfirmResetModal()" class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition">
+          <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+          <span>Buat Baru</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+
+    <!-- LEFT COLUMN: INPUT & PARAMETER CONTROLS (5 cols on XL) -->
+    <section class="xl:col-span-5 flex flex-col gap-4">
+
+      <!-- STEP 1: WHATSAPP RAW INPUT PARSER -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">1</span>
+            <h2 class="font-bold text-slate-800 text-sm">Copy-Paste Pesan WhatsApp disini</h2>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="loadSampleWhatsApp()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              Contoh WA
+            </button>
+            <button onclick="pasteFromClipboard()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              <i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i>
+              Tempel
+            </button>
+          </div>
+        </div>
+
+        <div class="p-4 space-y-3">
+          <div class="relative">
+            <textarea
+              id="rawWhatsappInput"
+              rows="6"
+              oninput="handleRawWhatsappChange(this.value)"
+              placeholder="Tempel (Paste) pesan WhatsApp di sini...&#10;Contoh:&#10;1. Nama bank = B&#10;2. Alamat = Jl.Raya Bekasi Km.21,Ruko No.A2/18-19,Rw.3 kec.cakung&#10;3. Kantor cabang = Pulogadung trade center&#10;4. No. rekening = 7080507857&#10;5. Nama pengguna = Ago Hardianto Putra&#10;6. Alamat lengkap indonesia = Plumbon Rt.03/10 Plumbon Mojolaban Sukoharjo"
+              class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-mono p-3 bg-slate-50/50 text-slate-800 placeholder:text-slate-400 transition outline-none resize-y"
+            ></textarea>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 text-[11px] text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/70">
+            <button onclick="parseRawWhatsapp(document.getElementById('rawWhatsappInput').value, true)" class="font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+              Sinkronkan Ulang
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: PILIH TEMPLATE BANK (A - E) -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">2</span>
+            <h2 class="font-bold text-slate-800 text-sm">Pilih Template E-Statement Bank</h2>
+          </div>
+        </div>
+
+        <div class="p-3 sm:p-4">
+          <div class="grid grid-cols-5 gap-2" id="templateSelectorGrid">
+            <button onclick="selectExpedition('A')" id="tab-exp-A" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
+              <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="A"></span>
+              <span class="text-[11px] font-bold text-slate-800">BCA</span>
+            </button>
+
+            <button onclick="selectExpedition('B')" id="tab-exp-B" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
+              <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="B"></span>
+              <span class="text-[11px] font-bold text-slate-800">BRI</span>
+            </button>
+
+            <button onclick="selectExpedition('C')" id="tab-exp-C" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
+              <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="C"></span>
+              <span class="text-[11px] font-bold text-slate-800">BNI</span>
+            </button>
+
+            <button onclick="selectExpedition('D')" id="tab-exp-D" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
+              <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="D"></span>
+              <span class="text-[11px] font-bold text-slate-800">MANDIRI</span>
+            </button>
+
+            <button onclick="selectExpedition('E')" id="tab-exp-E" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
+              <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="E"></span>
+              <span class="text-[11px] font-bold text-slate-800">BSI</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p class="px-1 -mt-1 text-[11px] text-slate-500">Lalu atur posisinya di kotak preview statement</p>
+
+      <!-- STEP 3: PARAMETER OTOMATIS & MANUAL (bisa dilipat, default terlipat) -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        <button type="button" id="step3Header" onclick="toggleStepCard('step3')" aria-expanded="false" class="w-full text-left px-4 py-3 bg-slate-50/80 hover:bg-slate-100/80 transition flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center">3</span>
+            <div>
+              <h2 class="font-bold text-slate-800 text-sm">Parameter Otomatis & Isian Manual</h2>
+            </div>
+          </div>
+          <span class="flex items-center gap-2">
+            <span id="activeTemplateLabel" class="text-xs font-bold text-indigo-600">BRI</span>
+            <span id="step3Chevron" class="text-slate-500 transition-transform"><i data-lucide="chevron-down" class="w-4 h-4"></i></span>
+          </span>
+        </button>
+
+        <div id="step3Body" class="hidden border-t border-slate-200/80 p-4 space-y-4">
+          <!-- Smart Address Parser Breakdown -->
+          <div id="addressHelperAccordion" class="rounded-xl border border-slate-200 bg-slate-50/70 overflow-hidden">
+            <button type="button" onclick="toggleAddressHelper()" class="w-full px-3.5 py-2.5 flex items-center justify-between text-left text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
+              <span class="flex items-center gap-2">
+                <i data-lucide="map-pin" class="w-4 h-4 text-rose-500"></i>
+                <span>Detail Komponen Alamat Indonesia (Poin 6)</span>
+              </span>
+              <span class="text-[11px] text-indigo-600 flex items-center gap-1">
+                <span>Ubah Komponen</span>
+                <i data-lucide="chevron-down" id="addrChevron" class="w-3.5 h-3.5 transition-transform"></i>
+              </span>
+            </button>
+            <div id="addressHelperBody" class="hidden px-3.5 pb-3.5 pt-2 border-t border-slate-200/80 space-y-2.5">
+              <p class="text-[11px] text-slate-500">Komponen ini otomatis diekstrak dari baris <b>6. Alamat lengkap indonesia</b>:</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">Dusun / Jalan / Blok</label>
+                  <input type="text" id="addr_dusun" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">RT (3 Digit)</label>
+                  <input type="text" id="addr_rt" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">RW (3 Digit)</label>
+                  <input type="text" id="addr_rw" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">Desa / Kelurahan</label>
+                  <input type="text" id="addr_desa" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">Kecamatan</label>
+                  <input type="text" id="addr_kecamatan" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">Kabupaten / Kota</label>
+                  <input type="text" id="addr_kabkota" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">Provinsi</label>
+                  <input type="text" id="addr_provinsi" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 uppercase">Kode Pos</label>
+                  <input type="text" id="addr_kodepos" oninput="updateAddressComponent()" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white" />
+                </div>
+                <div class="flex items-end">
+                  <button type="button" onclick="rebuildFormattedAddressForCurrentTemplate(true)" class="w-full py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition">
+                    Terapkan ke Poin 6
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="dynamicFieldsForm" class="space-y-3.5"></div>
+        </div>
+      </div>
+
+      <!-- STEP 4: SUMBER TEMPLATE & DATABASE UNIT B (bisa dilipat, default terlipat) -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        <button type="button" id="step4Header" onclick="toggleStepCard('step4')" aria-expanded="false" class="w-full text-left px-4 py-3 bg-slate-50/80 hover:bg-slate-100/80 transition flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-slate-700 text-white font-bold text-xs flex items-center justify-center">4</span>
+            <h2 class="font-bold text-slate-800 text-sm">Sumber Template & Database Bank</h2>
+          </div>
+          <span id="step4Chevron" class="text-slate-500 transition-transform"><i data-lucide="chevron-down" class="w-4 h-4"></i></span>
+        </button>
+
+        <div id="step4Body" class="hidden border-t border-slate-200/80 p-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button onclick="openTemplateAssetsModal()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition" title="Pengaturan File Gambar Template GitHub / Upload Manual">
+              <i data-lucide="image" class="w-4 h-4 text-blue-600"></i>
+              <span>Sumber Template</span>
+            </button>
+            <button onclick="openDatabaseModal()" class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition" title="Kelola Database Alamat Kanca/Kanwil Bank B">
+              <i data-lucide="database" class="w-4 h-4 text-indigo-600"></i>
+              <span>Database BRI</span>
+              <span id="dbCountBadge" class="px-1.5 py-0.2 bg-indigo-100 text-indigo-700 rounded-md text-[10px]">0</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: INTERACTIVE PREVIEW CANVAS & EXPORT -->
+    <section id="previewSection" class="xl:col-span-7 flex flex-col gap-4 sticky top-20">
+      <div id="previewToolbarCard" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-3 sm:p-4 flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5">
+              <button onclick="undoCanvasAction()" id="btnUndo" disabled class="p-1.5 rounded-lg text-slate-600 hover:bg-white hover:shadow-sm disabled:opacity-35 transition" title="Undo (Ctrl+Z)">
+                <i data-lucide="undo-2" class="w-4 h-4"></i>
+              </button>
+              <button onclick="redoCanvasAction()" id="btnRedo" disabled class="p-1.5 rounded-lg text-slate-600 hover:bg-white hover:shadow-sm disabled:opacity-35 transition" title="Redo (Ctrl+Y)">
+                <i data-lucide="redo-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <button onclick="toggleSnap()" id="btnToggleSnap" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition bg-indigo-50 text-indigo-700 border-indigo-200" title="Snap Otomatis">
+              <i data-lucide="magnet" class="w-3.5 h-3.5"></i>
+              <span>Snap</span>
+            </button>
+
+            <button onclick="toggleGuideBoxes()" id="btnToggleGuides" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition bg-rose-50 text-rose-700 border-rose-200" title="Kotak Panduan">
+              <i data-lucide="frame" class="w-3.5 h-3.5"></i>
+              <span>Kotak Panduan</span>
+            </button>
+
+            <button onclick="resetCurrentTemplateLayout()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition" title="Reset Posisi">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">Reset Posisi</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="exportStatement('png')" id="btnExportPNG" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 bg-amber-400 hover:bg-amber-500 shadow-sm transition">
+              <i data-lucide="image-down" class="w-4 h-4"></i>
+              <span>Unduh gambar PNG</span>
+            </button>
+            <button onclick="exportStatement('pdf')" id="btnExportPDF" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md shadow-indigo-500/20 transition">
+              <i data-lucide="file-down" class="w-4 h-4"></i>
+              <span>Unduh PDF A4</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="selectedBoxToolbar" class="hidden flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
+          <div id="selectedBoxControls" class="hidden items-center gap-1.5 flex-wrap">
+            <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+              <button onclick="adjustSelectedBoxFontSize(-1)" class="px-2 py-1 hover:bg-white rounded-md font-bold text-slate-700" title="Perkecil Font">A-</button>
+              <span id="selectedBoxFontSizeVal" class="px-2 font-mono text-[11px] font-semibold text-slate-700">13px</span>
+              <button onclick="adjustSelectedBoxFontSize(1)" class="px-2 py-1 hover:bg-white rounded-md font-bold text-slate-700" title="Perbesar Font">A+</button>
+            </div>
+
+            <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+              <button onclick="setSelectedBoxAlign('left')" class="p-1 hover:bg-white rounded-md text-slate-700" title="Rata Kiri">
+                <i data-lucide="align-left" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="setSelectedBoxAlign('center')" class="p-1 hover:bg-white rounded-md text-slate-700" title="Rata Tengah">
+                <i data-lucide="align-center" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="setSelectedBoxAlign('right')" class="p-1 hover:bg-white rounded-md text-slate-700" title="Rata Kanan">
+                <i data-lucide="align-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <button onclick="toggleSelectedBoxBold()" id="btnToggleBoxBold" class="px-2 py-1 rounded-lg border border-slate-200 bg-slate-100 hover:bg-white font-bold text-slate-700" title="Tebalkan Teks">
+              B
+            </button>
+          </div>
+        </div>
+
+        <!-- ATUR GAMBAR TEMPLATE: skala & shrink (per template) -->
+        <details id="bgAdjustPanel" class="pt-2 border-t border-slate-100 text-xs group">
+          <summary class="flex items-center justify-between gap-2 cursor-pointer select-none list-none font-semibold text-slate-700">
+            <span class="inline-flex items-center gap-1.5">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-indigo-600"></i>
+              Atur Gambar Template (Skala &amp; Shrink)
+              <span id="bgAdjustTplLabel" class="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold">Bank B</span>
+            </span>
+            <span class="text-[10px] text-slate-400 font-normal">ketuk untuk buka/tutup</span>
+          </summary>
+          <div class="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2.5">
+            <label class="flex flex-col gap-1">
+              <span class="flex items-center justify-between text-[11px] text-slate-600">Skala gambar <b id="bgAdjustScaleVal" class="font-mono text-slate-800">100%</b></span>
+              <input id="bgAdjustScale" type="range" min="50" max="150" step="1" value="100" class="w-full accent-indigo-600"
+                oninput="onBgAdjustInput('scale', this.value)" onchange="saveStateToStorage()" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="flex items-center justify-between text-[11px] text-slate-600">Lebar (shrink kiri-kanan) <b id="bgAdjustSxVal" class="font-mono text-slate-800">100%</b></span>
+              <input id="bgAdjustSx" type="range" min="50" max="150" step="1" value="100" class="w-full accent-indigo-600"
+                oninput="onBgAdjustInput('sx', this.value)" onchange="saveStateToStorage()" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="flex items-center justify-between text-[11px] text-slate-600">Tinggi (shrink atas-bawah) <b id="bgAdjustSyVal" class="font-mono text-slate-800">100%</b></span>
+              <input id="bgAdjustSy" type="range" min="50" max="150" step="1" value="100" class="w-full accent-indigo-600"
+                oninput="onBgAdjustInput('sy', this.value)" onchange="saveStateToStorage()" />
+            </label>
+          </div>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <span class="text-[10px] text-slate-400">Hanya mengubah gambar template. Kotak isian tidak ikut bergeser.</span>
+            <button onclick="resetBgAdjust()" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-100 hover:bg-white font-semibold text-slate-700">Reset 100%</button>
+          </div>
+        </details>
+
+        <!-- PRESET PENGATURAN PREVIEW (maks. 5) -->
+        <details id="presetPanel" class="pt-2 border-t border-slate-100 text-xs">
+          <summary class="flex items-center justify-between gap-2 cursor-pointer select-none list-none font-semibold text-slate-700">
+            <span class="inline-flex items-center gap-1.5">
+              <i data-lucide="bookmark" class="w-3.5 h-3.5 text-emerald-600"></i>
+              Klik disini untuk simpan pengaturan
+              <span id="presetCountBadge" class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold">0/5</span>
+            </span>
+            <span class="text-[10px] text-slate-400 font-normal">ketuk untuk buka/tutup</span>
+          </summary>
+          <div class="mt-2.5 flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+              <input id="presetNameInput" type="text" maxlength="24" placeholder="Nama preset (opsional)" class="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs" />
+              <button onclick="saveNewPreset()" class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Simpan</button>
+            </div>
+            <div id="presetList" class="flex flex-col gap-1.5"></div>
+            <p class="text-[10px] text-slate-400">Preset menyimpan posisi &amp; ukuran kotak, font, rata teks, serta skala/shrink gambar semua template (A–E). Isi data statement dan file gambar tidak ikut tersimpan.</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- INTERACTIVE PREVIEW VIEWPORT -->
+      <div id="previewViewport" class="bg-slate-800/95 rounded-2xl p-3 sm:p-5 shadow-inner border border-slate-700 flex flex-col items-center justify-center overflow-hidden">
+        <div id="previewLegend" class="w-full flex items-center justify-between text-[11px] text-slate-300 mb-2.5 px-1">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+            <span>Merah (2–6): Otomatis dari WA</span>
+            <span class="inline-block w-2 h-2 rounded-full bg-blue-500 ml-2"></span>
+            <span>Biru (A–C): Periode / Saldo</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="canvasScaleIndicator" class="font-mono text-slate-400">Skala: 100%</span>
+          </div>
+        </div>
+
+        <div id="previewOuterWrapper" class="w-full overflow-x-auto flex justify-center items-start py-1">
+          <div id="previewScaleContainer" class="origin-top transition-transform duration-150" style="width: 900px;">
+            <div
+              id="statementCanvas"
+              class="relative w-[900px] bg-white shadow-2xl overflow-hidden select-none show-guides"
+              style="height: 410px;"
+              onclick="handleCanvasBackgroundClick(event)"
+            >
+              <div id="snapLineX" class="snap-line-x"></div>
+              <div id="snapLineY" class="snap-line-y"></div>
+
+              <div id="templateBackgroundLayer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+              <div id="templateOverlaysLayer" class="absolute inset-0 w-full h-full z-20"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="previewFooter" class="w-full mt-3 pt-2.5 border-t border-slate-700/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 px-1">
+          <span class="flex items-center gap-1.5">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+            Output PDF dikalibrasi tepat di <b>Paling Atas Kertas A4 (210 × 297 mm)</b> tanpa kotak bantu.
+          </span>
+          <span id="lastSavedTimestamp" class="text-slate-400 font-mono">Tersimpan otomatis</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- DATABASE MODAL -->
+  <div id="databaseModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Database Alamat Unit Kerja — Bank BRI (Kanca / Kanwil)</h3>
+            <p class="text-xs text-slate-500">Pencocokan otomatis Poin 2 berdasarkan kata kunci alamat dari pesan WhatsApp</p>
+          </div>
+        </div>
+        <button onclick="closeDatabaseModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 flex-1">
+        <div class="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div class="text-xs text-indigo-950 space-y-0.5">
+            <p class="font-bold flex items-center gap-1.5">
+              <i data-lucide="folder-git-2" class="w-4 h-4 text-indigo-600"></i>
+              Integrasi File Database di GitHub (`database_bank_b.json` / `.csv`)
+            </p>
+            <p class="text-indigo-700 text-[11px]">Dashboard otomatis membaca <code>database_bank_b.json</code> di folder yang sama saat di-hosting.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 font-semibold text-xs shadow-sm transition">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+              <span>Import JSON/CSV</span>
+              <input type="file" accept=".json,.csv,.txt" class="hidden" onchange="importDatabaseFile(event)" />
+            </label>
+            <button onclick="exportDatabaseJSON()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Unduh database_bank_b.json</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+          <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Tambah Data Alamat & Kanca/Kanwil Baru</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+            <div class="sm:col-span-4">
+              <input type="text" id="newDbKeyword" placeholder="Kata Kunci / Alamat WA" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white" />
+            </div>
+            <div class="sm:col-span-3">
+              <input type="text" id="newDbAlamatLengkap" placeholder="Alamat Referensi" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white" />
+            </div>
+            <div class="sm:col-span-3">
+              <input type="text" id="newDbKancaKanwil" placeholder="Kanca / Kanwil (Poin 2)" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <button onclick="addDatabaseEntry()" class="w-full h-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-1 transition">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Tambah</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <input type="text" id="dbSearchInput" oninput="renderDatabaseTable()" placeholder="Cari unit kerja..." class="w-full sm:w-72 px-3 py-1.5 rounded-lg border border-slate-300 text-xs" />
+            <span class="text-xs text-slate-500" id="dbTotalRowsText">Menampilkan data</span>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                <tr>
+                  <th class="py-2.5 px-3 font-bold border-b border-slate-200">Keyword WA</th>
+                  <th class="py-2.5 px-3 font-bold border-b border-slate-200">Alamat</th>
+                  <th class="py-2.5 px-3 font-bold border-b border-slate-200">Kanca / Kanwil (Poin 2)</th>
+                  <th class="py-2.5 px-3 font-bold border-b border-slate-200 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="databaseTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <button onclick="resetDefaultDatabaseB()" class="text-xs text-slate-500 hover:text-rose-600 font-medium">Reset Database Bawaan</button>
+        <button onclick="closeDatabaseModal()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">Selesai & Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPLATE ASSETS MODAL -->
+  <div id="templateAssetsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+            <i data-lucide="image" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Sumber Gambar Template E-Statement</h3>
+            <p class="text-xs text-slate-500">Gunakan Template Vektor Bersih Bawaan atau Load File PNG dari Folder / Upload</p>
+          </div>
+        </div>
+        <button onclick="closeTemplateAssetsModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <div class="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-1.5">
+          <p class="font-bold flex items-center gap-1.5">
+            <i data-lucide="info" class="w-4 h-4 text-blue-600"></i>
+            Integrasi Folder GitHub:
+          </p>
+          <p class="text-[11px] leading-relaxed">
+            Dashboard ini menggunakan Template Vektor Bersih Presisi (A–E) tanpa kotak merah/biru. Jika Anda mengupload 5 file gambar template ke folder GitHub, Anda dapat mengaktifkannya di sini.
+          </p>
+        </div>
+
+        <div class="space-y-3" id="templateAssetConfigList"></div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+        <button onclick="closeTemplateAssetsModal()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">Simpan & Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM RESET MODAL -->
+  <div id="confirmResetModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Buat Statement Baru?</h3>
+          <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+            Seluruh isian WhatsApp dan parameter akan dikosongkan untuk memulai input baru.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="closeConfirmResetModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200">Batal</button>
+        <button onclick="confirmResetWorkspace()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">Ya, Buat Baru</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- APPLICATION SCRIPT -->
+  <script>
+    const MONTHS_ID_FULL = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const MONTHS_ID_SHORT = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function pad3(n) {
+      const clean = String(n || '').replace(/\D/g, '');
+      return clean ? clean.padStart(3, '0') : '000';
+    }
+
+    function getDefaultDatesOneMonthAgo() {
+      const now = new Date();
+      const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const yr = prevMonthDate.getFullYear();
+      const yrShort = String(yr).slice(-2);
+      const moIdx = prevMonthDate.getMonth();
+      const moNum = pad2(moIdx + 1);
+      const lastDay = new Date(yr, moIdx + 1, 0).getDate();
+
+      const monthFull = MONTHS_ID_FULL[moIdx];
+      const monthShort = MONTHS_ID_SHORT[moIdx];
+      const currMonthShort = MONTHS_ID_SHORT[now.getMonth()];
+
+      return {
+        expA_periode: `${monthFull.toUpperCase()} ${yr}`,
+        expB_tglLaporan: `${pad2(lastDay)}/${moNum}/${yrShort}`,
+        expB_periode: `01/${moNum}/${yrShort} - ${pad2(lastDay)}/${moNum}/${yrShort}`,
+        expC_periode: `1-${lastDay} ${monthFull} ${yr}`,
+        expD_periode: `01 ${monthShort} ${yr} - ${pad2(lastDay)} ${monthShort} ${yr}`,
+        expD_dicetak: `01 ${currMonthShort} ${now.getFullYear()}`,
+        expE_periode: `1-${lastDay} ${monthFull} ${yr}`
+      };
+    }
+
+    const DEFAULT_DB_BANK_B = [
+      { id: 'db-1', keyword: 'cakung, raya bekasi km.21, ruko no.a2/18-19, pulogadung', alamat: 'Jl.Raya Bekasi Km.21, Ruko No.A2/18-19, Rw.3 Kec.Cakung', kancaKanwil: 'KC JAKARTA CAKUNG / KANWIL JAKARTA 1' },
+      { id: 'db-2', keyword: 'pulogadung trade center, ptc', alamat: 'Kawasan Pulogadung Trade Center, Jakarta Timur', kancaKanwil: 'KC JAKARTA PULOGADUNG / KANWIL JAKARTA 1' },
+      { id: 'db-3', keyword: 'bekasi, ahmad yani bekasi, bekasi barat', alamat: 'Jl. Jend. Ahmad Yani, Bekasi', kancaKanwil: 'KC BEKASI / KANWIL JAKARTA 2' },
+      { id: 'db-4', keyword: 'cirebon, gebang, kartini cirebon', alamat: 'Jl. RA Kartini No. 85, Cirebon', kancaKanwil: 'KC CIREBON KARTINI / KANWIL BANDUNG' },
+      { id: 'db-5', keyword: 'sukoharjo, mojolaban, solo baru', alamat: 'Jl. Jenderal Sudirman No. 155, Sukoharjo', kancaKanwil: 'KC SUKOHARJO / KANWIL YOGYAKARTA' },
+      { id: 'db-6', keyword: 'pemalang, petunjungan, comal', alamat: 'Jl. Jend. Sudirman Timur No. 42, Pemalang', kancaKanwil: 'KC PEMALANG / KANWIL SEMARANG' },
+      { id: 'db-7', keyword: 'bandung, asia afrika, dago', alamat: 'Jl. Asia Afrika No. 57-59, Bandung', kancaKanwil: 'KC BANDUNG ASIA AFRIKA / KANWIL BANDUNG' },
+      { id: 'db-8', keyword: 'surabaya, pahlawan, gubeng', alamat: 'Jl. Pahlawan No. 38, Surabaya', kancaKanwil: 'KC SURABAYA PAHLAWAN / KANWIL SURABAYA' }
+    ];
+
+    const INDONESIA_REGION_MAP = {
+      'sukoharjo': { provinsi: 'JAWA TENGAH', kodepos: '57554' },
+      'mojolaban': { provinsi: 'JAWA TENGAH', kodepos: '57554' },
+      'surakarta': { provinsi: 'JAWA TENGAH', kodepos: '57111' },
+      'solo': { provinsi: 'JAWA TENGAH', kodepos: '57111' },
+      'klaten': { provinsi: 'JAWA TENGAH', kodepos: '57411' },
+      'karanganyar': { provinsi: 'JAWA TENGAH', kodepos: '57711' },
+      'wonogiri': { provinsi: 'JAWA TENGAH', kodepos: '57611' },
+      'sragen': { provinsi: 'JAWA TENGAH', kodepos: '57211' },
+      'boyolali': { provinsi: 'JAWA TENGAH', kodepos: '57311' },
+      'pemalang': { provinsi: 'JAWA TENGAH', kodepos: '52364' },
+      'petunjungan': { provinsi: 'JAWA TENGAH', kodepos: '52364' },
+      'semarang': { provinsi: 'JAWA TENGAH', kodepos: '50132' },
+      'tegal': { provinsi: 'JAWA TENGAH', kodepos: '52121' },
+      'pekalongan': { provinsi: 'JAWA TENGAH', kodepos: '51111' },
+      'banyumas': { provinsi: 'JAWA TENGAH', kodepos: '53111' },
+      'purwokerto': { provinsi: 'JAWA TENGAH', kodepos: '53111' },
+      'cilacap': { provinsi: 'JAWA TENGAH', kodepos: '53211' },
+      'magelang': { provinsi: 'JAWA TENGAH', kodepos: '56111' },
+      'kudus': { provinsi: 'JAWA TENGAH', kodepos: '59311' },
+      'jepara': { provinsi: 'JAWA TENGAH', kodepos: '59411' },
+      'pati': { provinsi: 'JAWA TENGAH', kodepos: '59111' },
+      'cirebon': { provinsi: 'JAWA BARAT', kodepos: '45191' },
+      'gebang': { provinsi: 'JAWA BARAT', kodepos: '45191' },
+      'indramayu': { provinsi: 'JAWA BARAT', kodepos: '45211' },
+      'kuningan': { provinsi: 'JAWA BARAT', kodepos: '45511' },
+      'majalengka': { provinsi: 'JAWA BARAT', kodepos: '45411' },
+      'bekasi': { provinsi: 'JAWA BARAT', kodepos: '17141' },
+      'bandung': { provinsi: 'JAWA BARAT', kodepos: '40111' },
+      'bogor': { provinsi: 'JAWA BARAT', kodepos: '16111' },
+      'depok': { provinsi: 'JAWA BARAT', kodepos: '16411' },
+      'karawang': { provinsi: 'JAWA BARAT', kodepos: '41311' },
+      'subang': { provinsi: 'JAWA BARAT', kodepos: '41211' },
+      'purwakarta': { provinsi: 'JAWA BARAT', kodepos: '41111' },
+      'garut': { provinsi: 'JAWA BARAT', kodepos: '44111' },
+      'tasikmalaya': { provinsi: 'JAWA BARAT', kodepos: '46111' },
+      'cianjur': { provinsi: 'JAWA BARAT', kodepos: '43211' },
+      'sukabumi': { provinsi: 'JAWA BARAT', kodepos: '43111' },
+      'cakung': { provinsi: 'DKI JAKARTA', kodepos: '13910' },
+      'pulogadung': { provinsi: 'DKI JAKARTA', kodepos: '13260' },
+      'jakarta': { provinsi: 'DKI JAKARTA', kodepos: '10110' },
+      'tangerang': { provinsi: 'BANTEN', kodepos: '15111' },
+      'serang': { provinsi: 'BANTEN', kodepos: '42111' },
+      'cilegon': { provinsi: 'BANTEN', kodepos: '42411' },
+      'surabaya': { provinsi: 'JAWA TIMUR', kodepos: '60111' },
+      'sidoarjo': { provinsi: 'JAWA TIMUR', kodepos: '61211' },
+      'gresik': { provinsi: 'JAWA TIMUR', kodepos: '61111' },
+      'malang': { provinsi: 'JAWA TIMUR', kodepos: '65111' },
+      'kediri': { provinsi: 'JAWA TIMUR', kodepos: '64111' },
+      'jember': { provinsi: 'JAWA TIMUR', kodepos: '68111' },
+      'banyuwangi': { provinsi: 'JAWA TIMUR', kodepos: '68411' },
+      'yogyakarta': { provinsi: 'DI YOGYAKARTA', kodepos: '55111' },
+      'sleman': { provinsi: 'DI YOGYAKARTA', kodepos: '55511' },
+      'bantul': { provinsi: 'DI YOGYAKARTA', kodepos: '55711' },
+      'medan': { provinsi: 'SUMATERA UTARA', kodepos: '20111' },
+      'palembang': { provinsi: 'SUMATERA SELATAN', kodepos: '30111' },
+      'pekanbaru': { provinsi: 'RIAU', kodepos: '28111' },
+      'lampung': { provinsi: 'LAMPUNG', kodepos: '35111' },
+      'makassar': { provinsi: 'SULAWESI SELATAN', kodepos: '90111' },
+      'denpasar': { provinsi: 'BALI', kodepos: '80111' },
+      'balikpapan': { provinsi: 'KALIMANTAN TIMUR', kodepos: '76111' },
+      'banjarmasin': { provinsi: 'KALIMANTAN SELATAN', kodepos: '70111' },
+      'pontianak': { provinsi: 'KALIMANTAN BARAT', kodepos: '78111' }
+    };
+
+    /*************************************************************************
+     * LOGO BANK (menggantikan huruf A–E di bagian "Pilih Template Bank")
+     * >>> Tempel link gambar logo di bawah ini (contoh: 'https://situs.com/logo-a.png'
+     *     atau nama file di folder yang sama: './logo-bank-a.png').
+     * Kalau dikosongkan / gambar gagal dimuat, otomatis tampil kotak huruf seperti semula.
+     *************************************************************************/
+    const BANK_LOGO_URLS = {
+      A: 'https://marketingexata.github.io/statement/logo%20bank/bankA.jpg',
+      B: 'https://marketingexata.github.io/statement/logo%20bank/bankB.jpg',
+      C: 'https://marketingexata.github.io/statement/logo%20bank/bankC.jpg',
+      D: 'https://marketingexata.github.io/statement/logo%20bank/bankD.jpg',
+      E: 'https://marketingexata.github.io/statement/logo%20bank/bankE.jpg'
+    };
+
+    const BANK_LOGO_FALLBACK_STYLES = {
+      A: 'bg-blue-600 text-white',
+      B: 'bg-sky-500 text-white',
+      C: 'bg-lime-500 text-slate-900',
+      D: 'bg-blue-500 text-white',
+      E: 'bg-amber-500 text-white'
+    };
+
+    function renderBankLogos() {
+      document.querySelectorAll('.bank-logo-slot').forEach(slot => {
+        const letter = slot.dataset.bank;
+        const url = (BANK_LOGO_URLS[letter] || '').trim();
+        const showLetter = () => {
+          slot.innerHTML = `<span class="w-7 h-7 rounded-lg ${BANK_LOGO_FALLBACK_STYLES[letter] || 'bg-slate-500 text-white'} font-extrabold text-xs flex items-center justify-center shadow-sm">${letter}</span>`;
+        };
+        if (!url) { showLetter(); return; }
+        const img = new Image();
+        img.alt = `Logo Bank ${letter}`;
+        img.className = 'max-h-9 max-w-full object-contain';
+        img.onerror = showLetter;
+        img.src = url;
+        slot.innerHTML = '';
+        slot.appendChild(img);
+      });
+    }
+
+    // Ukuran kanvas (piksel) per template. Bank C dan E memakai ukuran khusus.
+    const CANVAS_TARGET_SIZES = {
+      C: { w: 2217, h: 755 },
+      E: { w: 1553, h: 489 }
+    };
+    // Ukuran desain awal tampilan template bawaan (HTML) sebelum diskalakan ke ukuran target.
+    const BUILTIN_DESIGN_SIZES = {
+      C: { w: 900, h: 330 },
+      E: { w: 900, h: 340 }
+    };
+
+    // Skalakan posisi & ukuran semua kotak dari ukuran kanvas lama ke ukuran baru.
+    function scaleLayoutTo(layout, newW, newH) {
+      const fromW = layout.canvasWidth || 900;
+      const fromH = layout.canvasHeight;
+      const fx = newW / fromW;
+      const fy = newH / fromH;
+      const fs = Math.min(fx, fy);
+      Object.values(layout.boxes || {}).forEach(b => {
+        b.x = Math.round(b.x * fx);
+        b.w = Math.round(b.w * fx);
+        b.y = Math.round(b.y * fy);
+        b.h = Math.round(b.h * fy);
+        b.fontSize = Math.round((b.fontSize || 12) * fs * 10) / 10;
+      });
+      layout.canvasWidth = newW;
+      layout.canvasHeight = newH;
+      return layout;
+    }
+
+    // Pastikan setiap layout punya canvasWidth & ukuran sesuai target (data lama otomatis dimigrasi).
+    function normalizeLayouts(layouts) {
+      const out = layouts || {};
+      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+        const L = out[exp];
+        if (!L) return;
+        if (!L.canvasWidth) L.canvasWidth = 900;
+        const t = CANVAS_TARGET_SIZES[exp];
+        if (t && (L.canvasWidth !== t.w || L.canvasHeight !== t.h)) {
+          scaleLayoutTo(L, t.w, t.h);
+        }
+      });
+      return out;
+    }
+
+    function getDefaultLayouts() {
+      return normalizeLayouts(getBaseLayouts());
+    }
+
+    function getBaseLayouts() {
+      return {
+        A: {
+          canvasHeight: 410,
+          boxes: {
+            p3: { id: 'p3', badge: '3 • CAB.', type: 'auto', x: 96, y: 97, w: 185, h: 24, fontSize: 12, align: 'left', bold: true },
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 58, y: 123, w: 260, h: 25, fontSize: 12, align: 'left', bold: true },
+            p6: { id: 'p6', badge: '6 • Alamat Menurun', type: 'auto', x: 58, y: 151, w: 325, h: 98, fontSize: 11, align: 'left', bold: true },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 650, y: 126, w: 200, h: 24, fontSize: 12, align: 'left', bold: true },
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 650, y: 175, w: 210, h: 24, fontSize: 12, align: 'left', bold: true }
+          }
+        },
+        B: {
+          canvasHeight: 420,
+          boxes: {
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 34, y: 155, w: 260, h: 24, fontSize: 12, align: 'left', bold: true },
+            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 34, y: 185, w: 310, h: 52, fontSize: 11, align: 'left', bold: true },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 155, y: 250, w: 175, h: 24, fontSize: 12, align: 'left', bold: true },
+            mA: { id: 'mA', badge: 'A • Tanggal Laporan', type: 'manual', x: 575, y: 120, w: 220, h: 24, fontSize: 12, align: 'left', bold: true },
+            mB: { id: 'mB', badge: 'B • Periode', type: 'manual', x: 575, y: 158, w: 230, h: 24, fontSize: 12, align: 'left', bold: true },
+            p3: { id: 'p3', badge: '3 • Unit Kerja', type: 'auto', x: 575, y: 248, w: 265, h: 26, fontSize: 11, align: 'left', bold: true },
+            p2: { id: 'p2', badge: '2 • Alamat Unit (Kanca/Kanwil)', type: 'auto', x: 575, y: 288, w: 265, h: 40, fontSize: 11, align: 'left', bold: true }
+          }
+        },
+        C: {
+          canvasHeight: 330,
+          boxes: {
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 758, y: 69, w: 125, h: 24, fontSize: 11, align: 'left', bold: false },
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 20, y: 130, w: 240, h: 24, fontSize: 13, align: 'left', bold: true },
+            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 20, y: 160, w: 340, h: 54, fontSize: 12, align: 'left', bold: false },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 756, y: 134, w: 120, h: 22, fontSize: 12, align: 'left', bold: true },
+            p3: { id: 'p3', badge: '3 • Kantor Cabang', type: 'auto', x: 632, y: 164, w: 115, h: 22, fontSize: 11, align: 'left', bold: false },
+            mB: { id: 'mB', badge: 'B • Ringkasan Saldo (4 Kolom)', type: 'manual', x: 48, y: 274, w: 804, h: 28, fontSize: 13, align: 'center', bold: true }
+          }
+        },
+        D: {
+          canvasHeight: 470,
+          boxes: {
+            p5: { id: 'p5', badge: '5 • Nama / Name', type: 'auto', x: 175, y: 138, w: 160, h: 24, fontSize: 12, align: 'left', bold: false },
+            p3: { id: 'p3', badge: '3 • Cabang / Branch', type: 'auto', x: 175, y: 168, w: 160, h: 24, fontSize: 12, align: 'left', bold: false },
+            mA: { id: 'mA', badge: 'A • Periode / Period', type: 'manual', x: 495, y: 138, w: 195, h: 24, fontSize: 12, align: 'left', bold: false },
+            mB: { id: 'mB', badge: 'B • Dicetak pada', type: 'manual', x: 495, y: 168, w: 195, h: 24, fontSize: 12, align: 'left', bold: false },
+            p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 230, y: 266, w: 165, h: 24, fontSize: 12, align: 'left', bold: false },
+            mC: { id: 'mC', badge: 'C • Mutasi & Saldo (4 Baris)', type: 'manual', x: 660, y: 246, w: 175, h: 118, fontSize: 12, align: 'right', bold: false }
+          }
+        },
+        E: {
+          canvasHeight: 340,
+          boxes: {
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 45, y: 140, w: 220, h: 25, fontSize: 13, align: 'left', bold: false },
+            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 45, y: 174, w: 380, h: 58, fontSize: 12, align: 'left', bold: false },
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 512, y: 162, w: 135, h: 20, fontSize: 11, align: 'left', bold: false },
+            p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 230, y: 277, w: 150, h: 24, fontSize: 12, align: 'left', bold: false },
+            mB: { id: 'mB', badge: 'B • Saldo Bulan Lalu', type: 'manual', x: 700, y: 276, w: 155, h: 26, fontSize: 13, align: 'right', bold: false }
+          }
+        }
+      };
+    }
+
+    const STORAGE_KEY = 'STATEMENT_BANK_DASHBOARD_STATE_V2';
+    const DB_STORAGE_KEY = 'STATEMENT_BANK_B_DB_V1';
+
+    const defaultDates = getDefaultDatesOneMonthAgo();
+
+    function createInitialState() {
+      const d = getDefaultDatesOneMonthAgo();
+      return {
+        rawWhatsapp: `1. Nama bank = B\n2. Alamat = Jl.Raya Bekasi Km.21,Ruko No.A2/18-19,Rw.3 kec.cakung\n3. Kantor cabang = Pulogadung trade center\n4. No. rekening = 7080507857\n5. Nama pengguna = Ago Hardianto Putra\n6. Alamat lengkap indonesia = Plumbon Rt.03/10 Plumbon Mojolaban Sukoharjo`,
+        activeExpedition: 'B',
+        snapEnabled: true,
+        showGuides: true,
+        selectedBoxId: null,
+
+        parsed: {
+          ekspedisi: 'B',
+          alamatUnitRaw: 'Jl.Raya Bekasi Km.21,Ruko No.A2/18-19,Rw.3 kec.cakung',
+          kantorCabangRaw: 'Pulogadung trade center',
+          noAkunRaw: '7080507857',
+          namaPenggunaRaw: 'Ago Hardianto Putra',
+          alamatIndonesiaRaw: 'Plumbon Rt.03/10 Plumbon Mojolaban Sukoharjo'
+        },
+
+        addrComponents: {
+          dusun: 'PLUMBON',
+          rt: '003',
+          rw: '010',
+          desa: 'PLUMBON',
+          kecamatan: 'MOJOLABAN',
+          kabkota: 'SUKOHARJO',
+          provinsi: 'JAWA TENGAH',
+          kodepos: '57554'
+        },
+
+        templatesData: {
+          A: {
+            p3: 'KCP PULOGADUNG TRADE CENTER',
+            p4: '7080507857',
+            p5: 'AGO HARDIANTO PUTRA',
+            p6: 'MOJOLABAN\n\nRT 003 RW 010 JAWA TENGAH\n\nPLUMBON\n\nSUKOHARJO 57554\n\nINDONESIA',
+            mA: d.expA_periode,
+            halaman: '1/1'
+          },
+          B: {
+            p2: 'KC JAKARTA CAKUNG / KANWIL JAKARTA 1',
+            p3: 'UNIT PULOGADUNG TRADE CENTER',
+            p4: '7080507857',
+            p5: 'AGO HARDIANTO PUTRA',
+            p6: 'PLUMBON, Rt.003/010, SUKOHARJO MOJOLABAN, SUKOHARJO',
+            mA: d.expB_tglLaporan,
+            mB: d.expB_periode
+          },
+          C: {
+            p3: 'KCP Pulogadung trade center',
+            p4: '7080507857',
+            p5: 'AGO HARDIANTO PUTRA',
+            p6: 'PLUMBON 003 010, PLUMBON MOJOLABAN SUKOHARJO, JAWA TENGAH',
+            mA: d.expC_periode,
+            saldoAwal: '3.450.000,00',
+            totalPemasukan: '12.800.000,00',
+            totalPengeluaran: '9.150.000,00',
+            saldoAkhir: '7.100.000,00'
+          },
+          D: {
+            p3: 'KCP Pulogadung trade center',
+            p4: '7080507857',
+            p5: 'Ago Hardianto Putra',
+            mA: d.expD_periode,
+            mB: d.expD_dicetak,
+            saldoAwal: '4.250.000,00',
+            danaMasuk: '18.500.000,00',
+            danaKeluar: '14.200.000,00',
+            saldoAkhir: '8.550.000,00'
+          },
+          E: {
+            p4: '7080507857',
+            p5: 'AGO HARDIANTO PUTRA',
+            p6: 'PLUMBON 003 010, PLUMBON MOJOLABAN SUKOHARJO, JAWA TENGAH',
+            mA: d.expE_periode,
+            mB: '5.850.000,00'
+          }
+        },
+
+        layouts: getDefaultLayouts(),
+
+        templateSources: {
+          A: { mode: 'builtin', githubFile: 'Template_Statement_Bank_A_Kosong.png', customDataUrl: '' },
+          B: { mode: 'builtin', githubFile: 'Template_Statement_Bank_B_Kosong.png', customDataUrl: '' },
+          C: { mode: 'builtin', githubFile: 'Template_Statement_Bank_C_Kosong.png', customDataUrl: '' },
+          D: { mode: 'builtin', githubFile: 'Template_Statement_Bank_D_Kosong.png', customDataUrl: '' },
+          E: { mode: 'builtin', githubFile: 'Template_Statement_Bank_E_Kosong.png', customDataUrl: '' }
+        }
+      };
+    }
+
+    let appState = createInitialState();
+    let databaseB = [...DEFAULT_DB_BANK_B];
+
+    let historyStack = [];
+    let redoStack = [];
+
+    function pushHistorySnapshot() {
+      const snap = JSON.stringify({
+        templatesData: appState.templatesData,
+        layouts: appState.layouts
+      });
+      if (historyStack.length > 0 && historyStack[historyStack.length - 1] === snap) return;
+      historyStack.push(snap);
+      if (historyStack.length > 35) historyStack.shift();
+      redoStack = [];
+      updateUndoRedoButtons();
+    }
+
+    function undoCanvasAction() {
+      if (historyStack.length === 0) return;
+      const currentSnap = JSON.stringify({
+        templatesData: appState.templatesData,
+        layouts: appState.layouts
+      });
+      redoStack.push(currentSnap);
+      const prev = JSON.parse(historyStack.pop());
+      appState.templatesData = prev.templatesData;
+      appState.layouts = prev.layouts;
+      saveStateToStorage();
+      renderDynamicForm();
+      renderCanvas();
+      updateUndoRedoButtons();
+      showToast('Perubahan dibatalkan (Undo)', 'info');
+    }
+
+    function redoCanvasAction() {
+      if (redoStack.length === 0) return;
+      const currentSnap = JSON.stringify({
+        templatesData: appState.templatesData,
+        layouts: appState.layouts
+      });
+      historyStack.push(currentSnap);
+      const next = JSON.parse(redoStack.pop());
+      appState.templatesData = next.templatesData;
+      appState.layouts = next.layouts;
+      saveStateToStorage();
+      renderDynamicForm();
+      renderCanvas();
+      updateUndoRedoButtons();
+      showToast('Perubahan dikembalikan (Redo)', 'info');
+    }
+
+    function updateUndoRedoButtons() {
+      const btnU = document.getElementById('btnUndo');
+      const btnR = document.getElementById('btnRedo');
+      if (btnU) btnU.disabled = historyStack.length === 0;
+      if (btnR) btnR.disabled = redoStack.length === 0;
+    }
+
+    function saveStateToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        const now = new Date();
+        const tsEl = document.getElementById('lastSavedTimestamp');
+        if (tsEl) {
+          tsEl.textContent = `Tersimpan otomatis ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+        }
+      } catch (err) {
+        console.warn('Gagal menyimpan state:', err);
+      }
+    }
+
+    function loadStateFromStorage() {
+      try {
+        const savedDb = localStorage.getItem(DB_STORAGE_KEY);
+        if (savedDb) {
+          const parsedDb = JSON.parse(savedDb);
+          if (Array.isArray(parsedDb) && parsedDb.length > 0) databaseB = parsedDb;
+        }
+
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const init = createInitialState();
+          appState = {
+            ...init,
+            ...parsed,
+            parsed: { ...init.parsed, ...(parsed.parsed || {}) },
+            addrComponents: { ...init.addrComponents, ...(parsed.addrComponents || {}) },
+            templatesData: {
+              A: { ...init.templatesData.A, ...(parsed.templatesData?.A || {}) },
+              B: { ...init.templatesData.B, ...(parsed.templatesData?.B || {}) },
+              C: { ...init.templatesData.C, ...(parsed.templatesData?.C || {}) },
+              D: { ...init.templatesData.D, ...(parsed.templatesData?.D || {}) },
+              E: { ...init.templatesData.E, ...(parsed.templatesData?.E || {}) }
+            },
+            layouts: normalizeLayouts(parsed.layouts || init.layouts),
+            templateSources: { ...init.templateSources, ...(parsed.templateSources || {}) }
+          };
+          // Migrasi sekali: data lama Bank A/C/D yang tersimpan ikut diberi awalan "KCP"
+          if (!appState.kcpPrefixApplied) {
+            ['A', 'C', 'D'].forEach(k => {
+              const t = appState.templatesData[k];
+              if (t && t.p3) t.p3 = withKcpPrefix(t.p3);
+            });
+            appState.kcpPrefixApplied = true;
+          }
+          return true;
+        }
+      } catch (e) {
+        console.warn('Gagal memuat state:', e);
+      }
+      return false;
+    }
+
+    function saveDatabaseBToStorage() {
+      try {
+        localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(databaseB));
+        updateDbBadge();
+      } catch (e) {
+        console.warn('Gagal menyimpan DB:', e);
+      }
+    }
+
+    function updateDbBadge() {
+      const badge = document.getElementById('dbCountBadge');
+      if (badge) badge.textContent = databaseB.length;
+    }
+
+    async function tryFetchGithubDatabaseB() {
+      try {
+        const res = await fetch('./database_bank_b.json', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            databaseB = data;
+            saveDatabaseBToStorage();
+            showToast(`Database Unit B (${data.length} unit) dimuat dari GitHub!`, 'success');
+          }
+        }
+      } catch (_) {}
+    }
+
+    /*************************************************************************
+     * STRICT WHATSAPP PARSER: NO. 1 SKIPPED, NO. 2-6 ASSIGNED PRECISELY
+     *************************************************************************/
+    function handleRawWhatsappChange(val) {
+      appState.rawWhatsapp = val;
+      parseRawWhatsapp(val, false);
+    }
+
+    function parseRawWhatsapp(rawText, showFeedback = false) {
+      if (!rawText || !rawText.trim()) {
+        saveStateToStorage();
+        return;
+      }
+
+      pushHistorySnapshot();
+
+      const lines = rawText.split(/\r?\n/);
+      lines.forEach(line => {
+        const matchNum = line.match(/^\s*[*_~]*\s*(\d+)\s*[\.\)]\s*(.*)$/);
+        if (!matchNum) return;
+
+        const lineNum = parseInt(matchNum[1], 10);
+        const rest = matchNum[2].trim();
+        const sepIdx = rest.search(/[=:]/);
+        
+        let key = '';
+        let val = '';
+        if (sepIdx !== -1) {
+          key = rest.slice(0, sepIdx).trim().toLowerCase();
+          val = rest.slice(sepIdx + 1).trim();
+        } else {
+          val = rest;
+        }
+
+        // ATURAN KETAT: pemetaan HANYA berdasarkan NOMOR baris (bukan kata di label),
+        // supaya label seperti "Nama pemilik rekening" tidak salah masuk ke No. Rekening.
+        const value = val || rest;
+        switch (lineNum) {
+          case 1: // Nama bank: DIABAIKAN SEPENUHNYA (bank dipilih lewat tombol template A-E)
+            break;
+          case 2: // Alamat unit / Kanca / Kanwil
+            appState.parsed.alamatUnitRaw = value;
+            break;
+          case 3: // Kantor cabang bank
+            appState.parsed.kantorCabangRaw = value;
+            break;
+          case 4: // No. rekening
+            appState.parsed.noAkunRaw = value;
+            break;
+          case 5: // Nama pengguna / pemilik rekening
+            appState.parsed.namaPenggunaRaw = value;
+            break;
+          case 6: // Alamat lengkap
+            appState.parsed.alamatIndonesiaRaw = value;
+            break;
+          default:
+            break;
+        }
+      });
+
+      extractIndonesianAddressComponents(appState.parsed.alamatIndonesiaRaw);
+      syncParsedDataToAllTemplates();
+
+      populateAddressHelperInputs();
+      updateActiveExpeditionTabs();
+      renderDynamicForm();
+      renderCanvas();
+      saveStateToStorage();
+
+      if (showFeedback) {
+        showToast('Data WhatsApp berhasil diparsing secara presisi!', 'success');
+      }
+    }
+
+    function extractIndonesianAddressComponents(rawAddr) {
+      if (!rawAddr) return;
+      let text = rawAddr.trim();
+
+      let rt = '003';
+      let rw = '010';
+      const rtrwMatch = text.match(/(?:rt\.?\s*)?(\d{1,3})\s*(?:\/|rw\.?\s+)(\d{1,3})/i);
+      if (rtrwMatch) {
+        rt = pad3(rtrwMatch[1]);
+        rw = pad3(rtrwMatch[2]);
+      }
+
+      let kodepos = '';
+      const zipMatch = text.match(/\b(\d{5})\b/);
+      if (zipMatch) kodepos = zipMatch[1];
+
+      let beforeRt = text;
+      let afterRt = '';
+      if (rtrwMatch) {
+        const idx = text.indexOf(rtrwMatch[0]);
+        beforeRt = text.slice(0, idx).replace(/[,\.]+$/, '').trim();
+        afterRt = text.slice(idx + rtrwMatch[0].length).replace(/^[,\.\s]+/, '').trim();
+      }
+
+      if (kodepos) afterRt = afterRt.replace(kodepos, '').trim();
+
+      const tokens = afterRt.replace(/,/g, ' ').split(/\s+/).filter(Boolean);
+
+      let dusun = (beforeRt || tokens[0] || 'PLUMBON').toUpperCase();
+      let desa = dusun;
+      let kecamatan = '';
+      let kabkota = '';
+      let provinsi = '';
+
+      if (tokens.length >= 3) {
+        desa = tokens[0].toUpperCase();
+        kecamatan = tokens[1].toUpperCase();
+        kabkota = tokens.slice(2).join(' ').toUpperCase();
+      } else if (tokens.length === 2) {
+        desa = (beforeRt || tokens[0]).toUpperCase();
+        kecamatan = tokens[0].toUpperCase();
+        kabkota = tokens[1].toUpperCase();
+      } else if (tokens.length === 1) {
+        kabkota = tokens[0].toUpperCase();
+        kecamatan = tokens[0].toUpperCase();
+      }
+
+      const allWords = text.toLowerCase();
+      for (const [key, info] of Object.entries(INDONESIA_REGION_MAP)) {
+        if (allWords.includes(key)) {
+          if (!provinsi) provinsi = info.provinsi;
+          if (!kodepos) kodepos = info.kodepos;
+          break;
+        }
+      }
+
+      if (!provinsi) provinsi = 'JAWA TENGAH';
+      if (!kodepos) kodepos = '57554';
+
+      appState.addrComponents = {
+        dusun: dusun || 'PLUMBON',
+        rt,
+        rw,
+        desa: desa || dusun || 'PLUMBON',
+        kecamatan: kecamatan || 'MOJOLABAN',
+        kabkota: kabkota || 'SUKOHARJO',
+        provinsi,
+        kodepos
+      };
+    }
+
+    function matchBankBDatabase(rawAlamatUnit) {
+      if (!rawAlamatUnit) return 'KC JAKARTA CAKUNG / KANWIL JAKARTA 1';
+      const query = rawAlamatUnit.toLowerCase();
+      let bestMatch = null;
+      let bestScore = 0;
+
+      for (const row of databaseB) {
+        let score = 0;
+        const kwList = (row.keyword || '').toLowerCase().split(/[,;]/).map(s => s.trim()).filter(Boolean);
+        for (const kw of kwList) {
+          if (kw && query.includes(kw)) score += kw.length * 3;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = row;
+        }
+      }
+
+      if (bestMatch && bestScore > 0) return bestMatch.kancaKanwil;
+      return rawAlamatUnit.toUpperCase();
+    }
+
+    function formatAddressForTemplate(exp, c) {
+      const dusun = (c.dusun || '').toUpperCase();
+      const rt = pad3(c.rt);
+      const rw = pad3(c.rw);
+      const desa = (c.desa || '').toUpperCase();
+      const kec = (c.kecamatan || '').toUpperCase();
+      const kab = (c.kabkota || '').toUpperCase();
+      const prov = (c.provinsi || '').toUpperCase();
+      const pos = (c.kodepos || '').trim();
+
+      if (exp === 'A') {
+        return `${kec}\n\nRT ${rt} RW ${rw} ${prov}\n\n${desa}\n\n${kab} ${pos}\n\nINDONESIA`;
+      }
+      if (exp === 'B') {
+        return `${dusun}, Rt.${rt}/${rw}, ${kab} ${kec}, ${kab}`;
+      }
+      if (exp === 'C' || exp === 'E') {
+        return `${desa} ${rt} ${rw}, ${desa} ${kec} ${kab}, ${prov}`;
+      }
+      return '';
+    }
+
+    // Bank A, C, D: Kantor Cabang otomatis diawali "KCP " (tidak digandakan bila sudah ada).
+    function withKcpPrefix(value) {
+      const v = (value || '').trim();
+      if (!v) return '';
+      return /^KCP(\s|$)/i.test(v) ? v : `KCP ${v}`;
+    }
+
+    function syncParsedDataToAllTemplates() {
+      const p = appState.parsed;
+      const c = appState.addrComponents;
+
+      const cabUpper = (p.kantorCabangRaw || '').toUpperCase();
+      const namaUpper = (p.namaPenggunaRaw || '').toUpperCase();
+      const akun = (p.noAkunRaw || '').trim();
+
+      appState.templatesData.A.p3 = withKcpPrefix(cabUpper);
+      appState.templatesData.A.p4 = akun;
+      appState.templatesData.A.p5 = namaUpper;
+      appState.templatesData.A.p6 = formatAddressForTemplate('A', c);
+
+      appState.templatesData.B.p2 = matchBankBDatabase(p.alamatUnitRaw);
+      appState.templatesData.B.p3 = cabUpper.startsWith('UNIT ') ? cabUpper : `UNIT ${cabUpper}`;
+      appState.templatesData.B.p4 = akun;
+      appState.templatesData.B.p5 = namaUpper;
+      appState.templatesData.B.p6 = formatAddressForTemplate('B', c);
+
+      appState.templatesData.C.p3 = withKcpPrefix(p.kantorCabangRaw);
+      appState.templatesData.C.p4 = akun;
+      appState.templatesData.C.p5 = namaUpper;
+      appState.templatesData.C.p6 = formatAddressForTemplate('C', c);
+
+      appState.templatesData.D.p3 = withKcpPrefix(p.kantorCabangRaw);
+      appState.templatesData.D.p4 = akun;
+      appState.templatesData.D.p5 = p.namaPenggunaRaw;
+
+      appState.templatesData.E.p4 = akun;
+      appState.templatesData.E.p5 = namaUpper;
+      appState.templatesData.E.p6 = formatAddressForTemplate('E', c);
+    }
+
+    function populateAddressHelperInputs() {
+      const c = appState.addrComponents;
+      const fields = ['dusun', 'rt', 'rw', 'desa', 'kecamatan', 'kabkota', 'provinsi', 'kodepos'];
+      fields.forEach(k => {
+        const el = document.getElementById(`addr_${k}`);
+        if (el) el.value = c[k] || '';
+      });
+    }
+
+    function updateAddressComponent() {
+      const fields = ['dusun', 'rt', 'rw', 'desa', 'kecamatan', 'kabkota', 'provinsi', 'kodepos'];
+      fields.forEach(k => {
+        const el = document.getElementById(`addr_${k}`);
+        if (el) appState.addrComponents[k] = el.value;
+      });
+      rebuildFormattedAddressForCurrentTemplate(false);
+    }
+
+    function rebuildFormattedAddressForCurrentTemplate(notify = false) {
+      ['A', 'B', 'C', 'E'].forEach(exp => {
+        appState.templatesData[exp].p6 = formatAddressForTemplate(exp, appState.addrComponents);
+      });
+      renderDynamicForm();
+      renderCanvas();
+      saveStateToStorage();
+      if (notify) showToast('Format alamat Poin 6 diperbarui!', 'success');
+    }
+
+    // Lipat / buka kartu menu nomor 3 dan 4 (default keduanya terlipat)
+    function toggleStepCard(key) {
+      const body = document.getElementById(`${key}Body`);
+      const header = document.getElementById(`${key}Header`);
+      const chevron = document.getElementById(`${key}Chevron`);
+      if (!body) return;
+      const nowHidden = body.classList.toggle('hidden');
+      if (header) header.setAttribute('aria-expanded', String(!nowHidden));
+      if (chevron) chevron.classList.toggle('rotate-180', !nowHidden);
+    }
+
+    function toggleAddressHelper() {
+      const body = document.getElementById('addressHelperBody');
+      const chev = document.getElementById('addrChevron');
+      if (!body) return;
+      const isHidden = body.classList.contains('hidden');
+      body.classList.toggle('hidden', !isHidden);
+      if (chev) chev.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    function formatIDRNumber(num) {
+      return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+    }
+
+    function generateRandomFinancials(exp) {
+      pushHistorySnapshot();
+      const randStep = (min, max, step = 5000) => {
+        const steps = Math.floor((max - min) / step);
+        return min + Math.floor(Math.random() * (steps + 1)) * step;
+      };
+
+      if (exp === 'C') {
+        const saldoAwal = randStep(650000, 15000000, 25000);
+        const pemasukan = randStep(3500000, 45000000, 50000);
+        const maxPengeluaran = (saldoAwal + pemasukan) - 550000;
+        const pengeluaran = randStep(1200000, Math.max(1500000, Math.min(maxPengeluaran, 38000000)), 25000);
+        const saldoAkhir = Math.max(550000, saldoAwal + pemasukan - pengeluaran);
+
+        appState.templatesData.C.saldoAwal = formatIDRNumber(saldoAwal);
+        appState.templatesData.C.totalPemasukan = formatIDRNumber(pemasukan);
+        appState.templatesData.C.totalPengeluaran = formatIDRNumber(pengeluaran);
+        appState.templatesData.C.saldoAkhir = formatIDRNumber(saldoAkhir);
+      } else if (exp === 'D') {
+        const saldoAwal = randStep(800000, 18000000, 25000);
+        const danaMasuk = randStep(4000000, 52000000, 50000);
+        const maxKeluar = (saldoAwal + danaMasuk) - 600000;
+        const danaKeluar = randStep(1500000, Math.max(1800000, Math.min(maxKeluar, 42000000)), 25000);
+        const saldoAkhir = Math.max(600000, saldoAwal + danaMasuk - danaKeluar);
+
+        appState.templatesData.D.saldoAwal = formatIDRNumber(saldoAwal);
+        appState.templatesData.D.danaMasuk = formatIDRNumber(danaMasuk);
+        appState.templatesData.D.danaKeluar = formatIDRNumber(danaKeluar);
+        appState.templatesData.D.saldoAkhir = formatIDRNumber(saldoAkhir);
+      } else if (exp === 'E') {
+        const nominal = randStep(550000, 25000000, 25000);
+        appState.templatesData.E.mB = formatIDRNumber(nominal);
+      }
+
+      renderDynamicForm();
+      renderCanvas();
+      saveStateToStorage();
+      showToast('Nominal random berhasil di-generate (Saldo ≥ Rp 500.000)!', 'success');
+    }
+
+    const EXPEDITION_META = {
+      A: { name: 'BANK A', fontLabel: 'Font: Montserrat Bold' },
+      B: { name: 'BANK B', fontLabel: 'Font: Arial Bold' },
+      C: { name: 'BANK C', fontLabel: 'Font: Calibri' },
+      D: { name: 'BANK D', fontLabel: 'Font: Gilroy Medium' },
+      E: { name: 'BANK E', fontLabel: 'Font: Calibri Light' }
+    };
+
+    function selectExpedition(exp) {
+      if (!['A', 'B', 'C', 'D', 'E'].includes(exp)) return;
+      appState.activeExpedition = exp;
+      appState.selectedBoxId = null;
+      updateActiveExpeditionTabs();
+      renderDynamicForm();
+      renderCanvas();
+      updateSelectedBoxToolbar();
+      saveStateToStorage();
+    }
+
+    function updateActiveExpeditionTabs() {
+      const active = appState.activeExpedition;
+      ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
+        const btn = document.getElementById(`tab-exp-${letter}`);
+        if (!btn) return;
+        if (letter === active) {
+          btn.className = 'exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/70 shadow-sm transition-all scale-[1.02]';
+        } else {
+          btn.className = 'exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-all';
+        }
+      });
+
+      const meta = EXPEDITION_META[active];
+      const fontBadge = document.getElementById('activeFontBadge');
+      const tmplLabel = document.getElementById('activeTemplateLabel');
+      if (fontBadge && meta) fontBadge.textContent = meta.fontLabel;
+      if (tmplLabel && meta) tmplLabel.textContent = meta.name;
+
+      const addrAcc = document.getElementById('addressHelperAccordion');
+      if (addrAcc) addrAcc.style.display = active === 'D' ? 'none' : 'block';
+    }
+
+    function updateTemplateFieldValue(exp, key, val) {
+      appState.templatesData[exp][key] = val;
+      renderCanvas();
+      saveStateToStorage();
+    }
+
+    function renderDynamicForm() {
+      const exp = appState.activeExpedition;
+      const data = appState.templatesData[exp];
+      const container = document.getElementById('dynamicFieldsForm');
+      if (!container) return;
+
+      if (exp === 'A') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">3</span> Kantor Cabang (CAB.)</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p3)}" oninput="updateTemplateFieldValue('A','p3',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">4</span> No. Rekening</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p4)}" oninput="updateTemplateFieldValue('A','p4',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">5</span> Nama Pengguna</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p5)}" oninput="updateTemplateFieldValue('A','p5',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Periode (Bulan YYYY)</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('A','mA',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+            </div>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">6</span> Alamat Lengkap</span>
+            </label>
+            <textarea rows="6" oninput="updateTemplateFieldValue('A','p6',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono leading-snug">${escapeHtml(data.p6)}</textarea>
+          </div>
+        `;
+      } else if (exp === 'B') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">5</span> Nama Pengguna</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p5)}" oninput="updateTemplateFieldValue('B','p5',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">4</span> No. Rekening</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p4)}" oninput="updateTemplateFieldValue('B','p4',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">3</span> Unit Kerja</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p3)}" oninput="updateTemplateFieldValue('B','p3',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">2</span> Alamat Unit (Kanca/Kanwil)</span>
+                <button type="button" onclick="openDatabaseModal()" class="text-[10px] text-indigo-600 font-bold hover:underline">Cek Database</button>
+              </label>
+              <input type="text" value="${escapeHtml(data.p2)}" oninput="updateTemplateFieldValue('B','p2',this.value)" class="w-full px-3 py-2 rounded-xl border border-indigo-300 bg-indigo-50/30 text-xs font-semibold" />
+            </div>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">6</span> Alamat Lengkap</span>
+            </label>
+            <textarea rows="2" oninput="updateTemplateFieldValue('B','p6',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono">${escapeHtml(data.p6)}</textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Tanggal Laporan</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('B','mA',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">B</span> Periode</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('B','mB',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+            </div>
+          </div>
+        `;
+      } else if (exp === 'C') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">5</span> Nama Pengguna
+              </label>
+              <input type="text" value="${escapeHtml(data.p5)}" oninput="updateTemplateFieldValue('C','p5',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">4</span> No. Rekening
+              </label>
+              <input type="text" value="${escapeHtml(data.p4)}" oninput="updateTemplateFieldValue('C','p4',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">3</span> Kantor Cabang
+              </label>
+              <input type="text" value="${escapeHtml(data.p3)}" oninput="updateTemplateFieldValue('C','p3',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">6</span> Alamat Lengkap</span>
+            </label>
+            <textarea rows="2" oninput="updateTemplateFieldValue('C','p6',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono">${escapeHtml(data.p6)}</textarea>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Periode</span>
+            </label>
+            <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('C','mA',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+          </div>
+          <div class="p-3.5 rounded-xl bg-lime-50/70 border border-lime-300 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-blue-600 text-white">B</span> Ringkasan Saldo (Min. Saldo Akhir Rp 500.000)
+              </span>
+              <button type="button" onclick="generateRandomFinancials('C')" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+                <i data-lucide="dices" class="w-3.5 h-3.5"></i>
+                <span>Isi Random</span>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-600">Saldo Awal</label>
+                <input type="text" value="${escapeHtml(data.saldoAwal)}" oninput="updateTemplateFieldValue('C','saldoAwal',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-600">Total Pemasukan</label>
+                <input type="text" value="${escapeHtml(data.totalPemasukan)}" oninput="updateTemplateFieldValue('C','totalPemasukan',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-600">Total Pengeluaran</label>
+                <input type="text" value="${escapeHtml(data.totalPengeluaran)}" oninput="updateTemplateFieldValue('C','totalPengeluaran',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-emerald-700">Saldo Akhir</label>
+                <input type="text" value="${escapeHtml(data.saldoAkhir)}" oninput="updateTemplateFieldValue('C','saldoAkhir',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-emerald-400 bg-emerald-50/40 text-xs font-mono font-bold" />
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (exp === 'D') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">5</span> Nama / Name
+              </label>
+              <input type="text" value="${escapeHtml(data.p5)}" oninput="updateTemplateFieldValue('D','p5',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">3</span> Cabang / Branch
+              </label>
+              <input type="text" value="${escapeHtml(data.p3)}" oninput="updateTemplateFieldValue('D','p3',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">4</span> Nomor Rekening
+              </label>
+              <input type="text" value="${escapeHtml(data.p4)}" oninput="updateTemplateFieldValue('D','p4',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Periode</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('D','mA',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">B</span> Dicetak pada</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('D','mB',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-blue-600 text-white">C</span> Komponen Saldo & Transaksi
+              </span>
+              <button type="button" onclick="generateRandomFinancials('D')" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+                <i data-lucide="dices" class="w-3.5 h-3.5"></i>
+                <span>Isi Random</span>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-600">Saldo Awal</label>
+                <input type="text" value="${escapeHtml(data.saldoAwal)}" oninput="updateTemplateFieldValue('D','saldoAwal',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-600">Dana Masuk</label>
+                <input type="text" value="${escapeHtml(data.danaMasuk)}" oninput="updateTemplateFieldValue('D','danaMasuk',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-600">Dana Keluar</label>
+                <input type="text" value="${escapeHtml(data.danaKeluar)}" oninput="updateTemplateFieldValue('D','danaKeluar',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-indigo-700">Saldo Akhir</label>
+                <input type="text" value="${escapeHtml(data.saldoAkhir)}" oninput="updateTemplateFieldValue('D','saldoAkhir',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-indigo-400 bg-white text-xs font-mono font-bold" />
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (exp === 'E') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">5</span> Nama Pengguna
+              </label>
+              <input type="text" value="${escapeHtml(data.p5)}" oninput="updateTemplateFieldValue('E','p5',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">4</span> Nomor Rekening
+              </label>
+              <input type="text" value="${escapeHtml(data.p4)}" oninput="updateTemplateFieldValue('E','p4',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold" />
+            </div>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">6</span> Alamat Lengkap</span>
+            </label>
+            <textarea rows="2" oninput="updateTemplateFieldValue('E','p6',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono">${escapeHtml(data.p6)}</textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Periode</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('E','mA',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">B</span> Saldo Bulan Lalu (≥ 500.000)</span>
+                <button type="button" onclick="generateRandomFinancials('E')" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                  <i data-lucide="dices" class="w-3.5 h-3.5"></i> Isi Random
+                </button>
+              </label>
+              <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('E','mB',this.value)" class="w-full px-3 py-2 rounded-xl border border-amber-400 bg-amber-50/30 text-xs font-mono font-bold" />
+            </div>
+          </div>
+        `;
+      }
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Template bawaan (HTML) didesain pada ukuran dasar; skalakan agar memenuhi ukuran kanvas target.
+    function getScaledBuiltinTemplateHTML(exp) {
+      const html = getBuiltinTemplateHTML(exp);
+      const base = BUILTIN_DESIGN_SIZES[exp];
+      const layout = appState.layouts[exp];
+      if (!base || !layout) return html;
+      const W = layout.canvasWidth || 900;
+      const H = layout.canvasHeight;
+      if (W === base.w && H === base.h) return html;
+      return `<div style="width:${base.w}px;height:${base.h}px;transform:scale(${W / base.w},${H / base.h});transform-origin:0 0;">${html}</div>`;
+    }
+
+    function getBuiltinTemplateHTML(exp) {
+      if (exp === 'A') {
+        return `
+          <div class="w-full h-full bg-white font-bank-A text-slate-900 relative p-6">
+            <div class="w-full h-[68px] bg-[#0078ff] flex items-center px-6">
+              <span class="text-white text-[34px] font-extrabold tracking-wide">BANK A</span>
+            </div>
+            <div class="mt-2.5 ml-2 text-[12px] font-extrabold tracking-tight text-slate-900">CAB.</div>
+            <div class="mt-1 grid grid-cols-12 gap-5">
+              <div class="col-span-6 h-[138px] border-[1.8px] border-slate-600 rounded-xl p-3"></div>
+              <div class="col-span-6 h-[138px] border-[1.8px] border-slate-600 rounded-xl px-5 py-3 flex flex-col justify-between text-[11.5px] font-extrabold">
+                <div class="flex items-center"><span class="w-36">NO. REKENING</span><span class="w-4">:</span></div>
+                <div class="flex items-center"><span class="w-36">HALAMAN</span><span class="w-4">:</span><span>1/1</span></div>
+                <div class="flex items-center"><span class="w-36">PERIODE</span><span class="w-4">:</span></div>
+                <div class="flex items-center"><span class="w-36">MATA UANG</span><span class="w-4">:</span><span class="text-[12.5px]">IDR</span></div>
+              </div>
+            </div>
+            <div class="mt-4 w-full h-[92px] border-[1.8px] border-slate-600 rounded-xl"></div>
+            <div class="mt-2.5 w-full h-[30px] border-[1.8px] border-slate-600 rounded-lg grid grid-cols-12 items-center text-center text-[10.5px] font-extrabold divide-x-[1.8px] divide-slate-600">
+              <div class="col-span-2 py-1">TANGGAL</div>
+              <div class="col-span-5 py-1">KETERANGAN</div>
+              <div class="col-span-1 py-1">CBG</div>
+              <div class="col-span-2 py-1">MUTASI</div>
+              <div class="col-span-2 py-1">SALDO</div>
+            </div>
+          </div>
+        `;
+      }
+      if (exp === 'B') {
+        return `
+          <div class="w-full h-full bg-white font-bank-B text-slate-800 relative px-5 py-4 bank-b-watermark">
+            <div class="w-full h-[66px] bg-[#a7d4e6] flex items-center px-6">
+              <span class="text-[#2b2b2b] text-[33px] font-bold tracking-tight">BANK B</span>
+            </div>
+            <div class="w-full h-[1px] bg-slate-300 mt-3.5"></div>
+            <div class="absolute left-[24px] top-[118px] w-[335px] h-[122px] border border-slate-300 bg-white/70 p-2.5">
+              <div class="text-[12.5px] text-slate-800"><span class="font-bold">Kepada Yth. / </span><span class="italic font-normal text-slate-500">To :</span></div>
+            </div>
+            <div class="absolute left-[26px] top-[252px] text-[11px] leading-tight">
+              <div class="flex items-start"><div class="w-[115px]"><div class="font-bold text-slate-800">No. Rekening</div><div class="italic font-normal text-slate-400 text-[10px]">Account No</div></div><span class="font-bold mr-2">:</span></div>
+              <div class="flex items-start mt-6"><div class="w-[115px]"><div class="font-bold text-slate-800">Valuta</div><div class="italic font-normal text-slate-400 text-[10px]">Currency</div></div><span class="font-bold mr-2">:</span><span class="font-bold text-slate-700">IDR</span></div>
+            </div>
+            <div class="absolute left-[435px] top-[118px] text-[11px] leading-tight space-y-3">
+              <div class="flex items-start"><div class="w-[125px]"><div class="font-bold text-slate-800">Tanggal Laporan</div><div class="italic font-normal text-slate-400 text-[10px]">Statement Date</div></div><span class="font-bold">:</span></div>
+              <div class="flex items-start"><div class="w-[125px]"><div class="font-bold text-slate-800">Periode</div><div class="italic font-normal text-slate-400 text-[10px]">Period</div></div><span class="font-bold">:</span></div>
+            </div>
+            <div class="absolute left-[435px] top-[248px] text-[11px] leading-tight space-y-3.5">
+              <div class="flex items-start"><div class="w-[125px]"><div class="font-bold text-slate-800">Unit Kerja</div><div class="italic font-normal text-slate-400 text-[10px]">Business Unit</div></div><span class="font-bold">:</span></div>
+              <div class="flex items-start"><div class="w-[125px]"><div class="font-bold text-slate-800">Alamat Unit Kerja</div><div class="italic font-normal text-slate-400 text-[10px]">Business Unit Address</div></div><span class="font-bold">:</span></div>
+            </div>
+            <div class="absolute left-5 right-5 bottom-3 h-[34px] bg-[#a7d4e6] grid grid-cols-12">
+              <div class="col-span-2 border-r border-white/80"></div>
+              <div class="col-span-3 border-r border-white/80"></div>
+              <div class="col-span-7"></div>
+            </div>
+          </div>
+        `;
+      }
+      if (exp === 'C') {
+        return `
+          <div class="w-full h-full bg-white font-bank-C text-slate-900 relative px-4 py-3">
+            <div class="w-full h-[54px] bg-[#ecf982] flex items-center px-5">
+              <span class="text-[#2c2e33] text-[31px] font-extrabold tracking-tight" style="font-family: 'Montserrat', sans-serif;">BANK C</span>
+            </div>
+            <div class="absolute right-[145px] top-[72px] text-[12px] font-semibold text-slate-800">Periode:</div>
+            <div class="absolute left-[690px] top-[137px] text-[12px] font-bold text-slate-800">NO REKENING.</div>
+            <div class="absolute left-[545px] top-[166px] text-[12px] text-slate-800">Kantor Cabang:</div>
+            <div class="absolute left-[755px] top-[166px] text-[12px] text-slate-800">• Mata Uang: <b>IDR</b></div>
+            <div class="absolute left-5 right-1/2 top-[224px] h-[1px] bg-slate-200"></div>
+            <div class="absolute left-4 right-4 bottom-4 h-[76px] bg-[#ecf982] rounded-xl px-8 py-2.5 flex flex-col justify-between">
+              <div class="grid grid-cols-4 text-center text-[12.5px] font-semibold text-slate-800 divide-x-2 divide-white">
+                <div>Saldo Awal</div><div>Total Pemasukan</div><div>Total Pengeluaran</div><div>Saldo Akhir</div>
+              </div>
+              <div class="h-8"></div>
+            </div>
+          </div>
+        `;
+      }
+      if (exp === 'D') {
+        return `
+          <div class="w-full h-full bg-white font-bank-D text-slate-800 relative px-4 py-3">
+            <div class="w-full h-[85px] bg-[#0078ff] flex items-center px-8">
+              <span class="text-white text-[34px] font-extrabold tracking-wide">BANK D</span>
+            </div>
+            <div class="mt-5 px-3 grid grid-cols-12 text-[11.5px]">
+              <div class="col-span-5 space-y-3">
+                <div class="flex items-center"><div class="w-[130px]"><span class="font-bold text-slate-900">Nama/</span><span class="italic text-slate-500">Name</span></div><span class="mr-2">:</span></div>
+                <div class="flex items-center"><div class="w-[130px]"><span class="font-bold text-slate-900">Cabang/</span><span class="italic text-slate-500">Branch</span></div><span class="mr-2">:</span></div>
+              </div>
+              <div class="col-span-5 space-y-3">
+                <div class="flex items-center"><div class="w-[140px]"><span class="font-bold text-slate-900">Periode/</span><span class="italic text-slate-500">Period</span></div><span class="mr-2">:</span></div>
+                <div class="flex items-center"><div class="w-[140px]"><span class="font-bold text-slate-900">Dicetak pada/</span><span class="italic text-slate-500">Issued on</span></div><span class="mr-2">:</span></div>
+              </div>
+              <div class="col-span-2 text-right pr-4 leading-tight">
+                <div class="font-bold text-slate-900">1 dari 1</div>
+                <div class="italic text-slate-500 text-[10.5px]">1 of 1</div>
+              </div>
+            </div>
+            <div class="mt-6 px-3 grid grid-cols-12 items-start">
+              <div class="col-span-5 pt-1">
+                <div class="text-[16px] font-extrabold text-slate-900 ml-32 mb-4">IDR</div>
+                <div class="space-y-3 text-[11.5px]">
+                  <div class="flex items-center"><div class="w-[185px]"><span class="font-bold text-slate-900">Nomor Rekening</span><span class="italic text-slate-500 ml-2">/Account Number</span></div><span>:</span></div>
+                  <div class="flex items-center"><div class="w-[185px]"><span class="font-bold text-slate-900">Mata Uang/</span><span class="italic text-slate-500">Currency</span></div><span class="mr-4">:</span><span class="font-medium text-slate-800">IDR</span></div>
+                </div>
+              </div>
+              <div class="col-span-7">
+                <div class="rounded-2xl border border-slate-200/90 shadow-sm bg-white px-5 py-4 space-y-3 text-[11.5px]">
+                  <div class="flex items-center"><div class="w-[215px]"><span class="font-bold text-slate-900">Saldo Awal/</span><span class="italic text-slate-500">Initial Balance</span></div><span>:</span></div>
+                  <div class="flex items-center"><div class="w-[215px]"><span class="font-bold text-slate-900">Dana Masuk/</span><span class="italic text-slate-500">Incoming Transactions</span></div><span>:</span></div>
+                  <div class="flex items-center"><div class="w-[215px]"><span class="font-bold text-slate-900">Dana Keluar/</span><span class="italic text-slate-500">Outgoing Transactions</span></div><span>:</span></div>
+                  <div class="flex items-center"><div class="w-[215px]"><span class="font-bold text-slate-900">Saldo Akhir/</span><span class="italic text-slate-500">Closing Balance</span></div><span>:</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="absolute left-6 right-6 bottom-3 h-[46px] grid grid-cols-12 gap-1.5 text-[11px]">
+              <div class="col-span-1 bg-[#eef3f8] px-2.5 flex flex-col justify-center"><span class="font-bold text-slate-900">No</span><span class="italic text-slate-500 text-[10px]">No</span></div>
+              <div class="col-span-2 bg-[#eef3f8] px-3 flex flex-col justify-center"><span class="font-bold text-slate-900">Tanggal</span><span class="italic text-slate-500 text-[10px]">Date</span></div>
+              <div class="col-span-4 bg-[#eef3f8] px-3 flex flex-col justify-center"><span class="font-bold text-slate-900">Keterangan</span><span class="italic text-slate-500 text-[10px]">Remarks</span></div>
+              <div class="col-span-3 bg-[#eef3f8] px-3 flex flex-col justify-center text-right"><span class="font-bold text-slate-900">Nominal (IDR)</span><span class="italic text-slate-500 text-[10px]">Amount (IDR)</span></div>
+              <div class="col-span-2 bg-[#eef3f8] px-3 flex flex-col justify-center text-right"><span class="font-bold text-slate-900">Saldo (IDR)</span><span class="italic text-slate-500 text-[10px]">Balance (IDR)</span></div>
+            </div>
+          </div>
+        `;
+      }
+      if (exp === 'E') {
+        return `
+          <div class="w-full h-full bg-white font-bank-E text-slate-900 relative bank-e-grid overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-[230px] h-[230px] rounded-full border-[38px] border-[#ee9b27] pointer-events-none"></div>
+            <div class="absolute top-0 right-0 w-[125px] h-[195px] bg-[#ee9b27] pointer-events-none" style="clip-path: path('M 10 0 L 125 0 L 125 195 Q 95 75 10 0 Z');"></div>
+            <div class="absolute left-8 top-6 w-[690px] h-[76px] bg-white flex items-center px-6">
+              <span class="text-[#ee9b27] text-[35px] font-extrabold tracking-wide" style="font-family: 'Montserrat', sans-serif;">BANK E</span>
+            </div>
+            <div class="absolute left-[462px] top-[136px] text-[11.5px] text-slate-800">Rekening : <span class="font-medium text-[13px]">1/1</span></div>
+            <div class="absolute left-[462px] top-[158px] h-[20px] flex items-center text-[11.5px] text-slate-800"><span>Periode</span></div>
+            <div class="absolute left-[655px] top-[156px] text-[13.5px] font-bold text-slate-900 tracking-tight" style="font-family: 'Calibri', sans-serif;">LAPORAN REKENING</div>
+            <div class="absolute left-[462px] top-[185px] w-[295px] h-[48px] border border-slate-700 bg-white"></div>
+            <div class="absolute left-10 right-14 top-[248px] h-[1.5px] bg-slate-700"></div>
+            <div class="absolute left-11 top-[262px] text-[11px] font-bold text-slate-900 tracking-tight" style="font-family: 'Calibri', sans-serif;">RINGKASAN TRANSAKSI</div>
+            <div class="absolute left-24 top-[280px] h-[22px] flex items-center text-[13px] text-slate-900">
+              <span class="font-bold" style="font-family: 'Calibri', sans-serif;">NOMOR REKENING</span><span class="text-[11px] ml-1">- IDR -</span>
+            </div>
+            <div class="absolute right-[45px] top-[262px] text-[11.5px] text-slate-800 text-right">SALDO BULAN LALU</div>
+          </div>
+        `;
+      }
+      return '';
+    }
+
+    function renderCanvas() {
+      const exp = appState.activeExpedition;
+      const layout = appState.layouts[exp];
+      const data = appState.templatesData[exp];
+      const srcCfg = appState.templateSources[exp] || { mode: 'builtin' };
+
+      const canvasEl = document.getElementById('statementCanvas');
+      const bgLayer = document.getElementById('templateBackgroundLayer');
+      const overlaysLayer = document.getElementById('templateOverlaysLayer');
+      if (!canvasEl || !bgLayer || !overlaysLayer) return;
+
+      canvasEl.style.width = `${layout.canvasWidth || 900}px`;
+      canvasEl.style.height = `${layout.canvasHeight}px`;
+      const scaleBox = document.getElementById('previewScaleContainer');
+      if (scaleBox) scaleBox.style.width = `${layout.canvasWidth || 900}px`;
+      canvasEl.classList.toggle('show-guides', !!appState.showGuides);
+      canvasEl.classList.toggle('guides-idle', !previewGuidesActive);
+
+      if (srcCfg.mode === 'custom' && srcCfg.customDataUrl) {
+        bgLayer.innerHTML = `<img src="${srcCfg.customDataUrl}" alt="Template ${exp}" class="w-full h-full object-fill" />`;
+      } else if (srcCfg.mode === 'github' && srcCfg.githubFile) {
+        bgLayer.innerHTML = `
+          <img src="./${srcCfg.githubFile}" alt="Template GitHub ${exp}" class="w-full h-full object-fill" onerror="this.style.display='none'; document.getElementById('fallbackBuiltinBg').style.display='block';" />
+          <div id="fallbackBuiltinBg" style="display:none;" class="w-full h-full">${getScaledBuiltinTemplateHTML(exp)}</div>
+        `;
+      } else {
+        bgLayer.innerHTML = getScaledBuiltinTemplateHTML(exp);
+      }
+
+      applyBgAdjust();
+      syncBgAdjustUI();
+
+      overlaysLayer.innerHTML = '';
+      const fontClass = `font-bank-${exp}`;
+
+      Object.values(layout.boxes).forEach(box => {
+        const boxEl = document.createElement('div');
+        const isSelected = appState.selectedBoxId === box.id;
+        boxEl.className = `canvas-field-box ${fontClass} type-${box.type} ${isSelected ? 'selected-box' : ''}`;
+        boxEl.dataset.boxId = box.id;
+        boxEl.style.left = `${box.x}px`;
+        boxEl.style.top = `${box.y}px`;
+        boxEl.style.width = `${box.w}px`;
+        boxEl.style.height = `${box.h}px`;
+        boxEl.style.fontSize = `${box.fontSize || 12}px`;
+        boxEl.style.textAlign = box.align || 'left';
+        boxEl.style.fontWeight = box.bold ? '700' : (exp === 'E' ? '300' : exp === 'D' ? '500' : '400');
+
+        const badgeEl = document.createElement('div');
+        badgeEl.className = 'field-badge';
+        badgeEl.textContent = box.badge;
+        boxEl.appendChild(badgeEl);
+
+        const contentEl = document.createElement('div');
+        contentEl.className = 'field-content';
+
+        if (exp === 'C' && box.id === 'mB') {
+          contentEl.style.whiteSpace = 'normal';
+          contentEl.style.lineHeight = '1.2';
+          contentEl.innerHTML = `<div class="grid grid-cols-4 items-center text-center w-full h-full"><div class="px-1 truncate">${escapeHtml(data.saldoAwal)}</div><div class="px-1 truncate">${escapeHtml(data.totalPemasukan)}</div><div class="px-1 truncate">${escapeHtml(data.totalPengeluaran)}</div><div class="px-1 truncate">${escapeHtml(data.saldoAkhir)}</div></div>`;
+        } else if (exp === 'D' && box.id === 'mC') {
+          contentEl.style.whiteSpace = 'normal';
+          contentEl.style.lineHeight = '1.2';
+          contentEl.innerHTML = `<div class="flex flex-col justify-between w-full h-full"><div class="h-[24px] flex items-center justify-end gap-1.5"><span>${escapeHtml(data.saldoAwal)}</span><span>IDR</span></div><div class="h-[24px] flex items-center justify-end gap-1.5 text-emerald-600"><span>+${escapeHtml(data.danaMasuk)}</span><span>IDR</span></div><div class="h-[24px] flex items-center justify-end gap-1.5"><span>-${escapeHtml(data.danaKeluar)}</span><span>IDR</span></div><div class="h-[24px] flex items-center justify-end gap-1.5 font-semibold"><span>${escapeHtml(data.saldoAkhir)}</span><span>IDR</span></div></div>`;
+        } else {
+          contentEl.style.whiteSpace = 'pre-wrap';
+          contentEl.style.lineHeight = exp === 'A' && box.id === 'p6' ? '1.08' : '1.25';
+          contentEl.textContent = data[box.id] || '';
+          contentEl.addEventListener('dblclick', e => {
+            e.stopPropagation();
+            contentEl.setAttribute('contenteditable', 'true');
+            contentEl.focus();
+          });
+          contentEl.addEventListener('blur', () => {
+            contentEl.removeAttribute('contenteditable');
+            const newVal = contentEl.innerText;
+            if (appState.templatesData[exp][box.id] !== newVal) {
+              pushHistorySnapshot();
+              appState.templatesData[exp][box.id] = newVal;
+              renderDynamicForm();
+              saveStateToStorage();
+            }
+          });
+        }
+
+        boxEl.appendChild(contentEl);
+
+        ['nw', 'ne', 'sw', 'se', 'e', 's'].forEach(dir => {
+          const hEl = document.createElement('div');
+          hEl.className = `resize-handle handle-${dir}`;
+          hEl.dataset.resizeDir = dir;
+          boxEl.appendChild(hEl);
+        });
+
+        boxEl.addEventListener('mousedown', e => startBoxInteraction(e, box.id));
+        boxEl.addEventListener('touchstart', e => startBoxInteraction(e, box.id), { passive: false });
+
+        overlaysLayer.appendChild(boxEl);
+      });
+
+      updateSelectedBoxToolbar();
+      updateCanvasResponsiveScale();
+    }
+
+    let interactionState = null;
+
+    function getClientXY(e) {
+      if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function getCurrentCanvasScale() {
+      const container = document.getElementById('previewScaleContainer');
+      if (!container) return 1;
+      const lw = (appState.layouts[appState.activeExpedition] || {}).canvasWidth || 900;
+      return container.getBoundingClientRect().width / lw;
+    }
+
+    function startBoxInteraction(e, boxId) {
+      const target = e.target;
+      if (target.getAttribute && target.getAttribute('contenteditable') === 'true') return;
+
+      e.stopPropagation();
+      const exp = appState.activeExpedition;
+      const box = appState.layouts[exp].boxes[boxId];
+      if (!box) return;
+
+      if (appState.selectedBoxId !== boxId) {
+        appState.selectedBoxId = boxId;
+        renderCanvas();
+      }
+
+      const resizeDir = target.dataset ? target.dataset.resizeDir : null;
+      const pt = getClientXY(e);
+
+      pushHistorySnapshot();
+
+      interactionState = {
+        mode: resizeDir ? 'resize' : 'drag',
+        resizeDir,
+        boxId,
+        startX: pt.x,
+        startY: pt.y,
+        origX: box.x,
+        origY: box.y,
+        origW: box.w,
+        origH: box.h,
+        scale: getCurrentCanvasScale()
+      };
+
+      window.addEventListener('mousemove', onBoxInteractionMove);
+      window.addEventListener('mouseup', onBoxInteractionEnd);
+      window.addEventListener('touchmove', onBoxInteractionMove, { passive: false });
+      window.addEventListener('touchend', onBoxInteractionEnd);
+    }
+
+    function onBoxInteractionMove(e) {
+      if (!interactionState) return;
+      if (e.cancelable) e.preventDefault();
+
+      const pt = getClientXY(e);
+      const dx = (pt.x - interactionState.startX) / interactionState.scale;
+      const dy = (pt.y - interactionState.startY) / interactionState.scale;
+
+      const exp = appState.activeExpedition;
+      const layout = appState.layouts[exp];
+      const box = layout.boxes[interactionState.boxId];
+      if (!box) return;
+
+      const snapLineX = document.getElementById('snapLineX');
+      const snapLineY = document.getElementById('snapLineY');
+      if (snapLineX) snapLineX.style.display = 'none';
+      if (snapLineY) snapLineY.style.display = 'none';
+
+      if (interactionState.mode === 'drag') {
+        let newX = Math.round(interactionState.origX + dx);
+        let newY = Math.round(interactionState.origY + dy);
+        newX = Math.max(0, Math.min((layout.canvasWidth || 900) - box.w, newX));
+        newY = Math.max(0, Math.min(layout.canvasHeight - box.h, newY));
+
+        if (appState.snapEnabled) {
+          const SNAP_THRESHOLD = 5;
+          Object.values(layout.boxes).forEach(other => {
+            if (other.id === box.id) return;
+            if (Math.abs(newX - other.x) <= SNAP_THRESHOLD) {
+              newX = other.x;
+              if (snapLineY) { snapLineY.style.left = `${newX}px`; snapLineY.style.display = 'block'; }
+            }
+            if (Math.abs(newY - other.y) <= SNAP_THRESHOLD) {
+              newY = other.y;
+              if (snapLineX) { snapLineX.style.top = `${newY}px`; snapLineX.style.display = 'block'; }
+            }
+          });
+        }
+        box.x = newX;
+        box.y = newY;
+      } else if (interactionState.mode === 'resize') {
+        const dir = interactionState.resizeDir;
+        let newX = interactionState.origX;
+        let newY = interactionState.origY;
+        let newW = interactionState.origW;
+        let newH = interactionState.origH;
+
+        if (dir.includes('e')) newW = Math.max(40, Math.round(interactionState.origW + dx));
+        if (dir.includes('s')) newH = Math.max(18, Math.round(interactionState.origH + dy));
+        if (dir.includes('w')) {
+          const possibleW = Math.round(interactionState.origW - dx);
+          if (possibleW >= 40) { newW = possibleW; newX = Math.round(interactionState.origX + dx); }
+        }
+        if (dir.includes('n')) {
+          const possibleH = Math.round(interactionState.origH - dy);
+          if (possibleH >= 18) { newH = possibleH; newY = Math.round(interactionState.origY + dy); }
+        }
+        box.x = newX; box.y = newY; box.w = newW; box.h = newH;
+      }
+
+      const domBox = document.querySelector(`.canvas-field-box[data-box-id="${box.id}"]`);
+      if (domBox) {
+        domBox.style.left = `${box.x}px`;
+        domBox.style.top = `${box.y}px`;
+        domBox.style.width = `${box.w}px`;
+        domBox.style.height = `${box.h}px`;
+      }
+    }
+
+    function onBoxInteractionEnd() {
+      if (!interactionState) return;
+      interactionState = null;
+      const snapLineX = document.getElementById('snapLineX');
+      const snapLineY = document.getElementById('snapLineY');
+      if (snapLineX) snapLineX.style.display = 'none';
+      if (snapLineY) snapLineY.style.display = 'none';
+      window.removeEventListener('mousemove', onBoxInteractionMove);
+      window.removeEventListener('mouseup', onBoxInteractionEnd);
+      window.removeEventListener('touchmove', onBoxInteractionMove);
+      window.removeEventListener('touchend', onBoxInteractionEnd);
+      saveStateToStorage();
+    }
+
+    function handleCanvasBackgroundClick(e) {
+      if (e.target.id === 'statementCanvas' || e.target.id === 'templateOverlaysLayer') {
+        appState.selectedBoxId = null;
+        renderCanvas();
+      }
+    }
+
+    function updateSelectedBoxToolbar() {
+      const exp = appState.activeExpedition;
+      const boxId = appState.selectedBoxId;
+      const toolbarEl = document.getElementById('selectedBoxToolbar');
+      const controlsEl = document.getElementById('selectedBoxControls');
+      const fontSizeValEl = document.getElementById('selectedBoxFontSizeVal');
+      const boldBtn = document.getElementById('btnToggleBoxBold');
+
+      if (!toolbarEl || !controlsEl) return;
+
+      if (!boxId || !appState.layouts[exp]?.boxes[boxId]) {
+        toolbarEl.classList.add('hidden');
+        toolbarEl.classList.remove('flex');
+        controlsEl.classList.add('hidden');
+        controlsEl.classList.remove('flex');
+        return;
+      }
+
+      const box = appState.layouts[exp].boxes[boxId];
+      toolbarEl.classList.remove('hidden');
+      toolbarEl.classList.add('flex');
+      controlsEl.classList.remove('hidden');
+      controlsEl.classList.add('flex');
+
+      if (fontSizeValEl) fontSizeValEl.textContent = `${box.fontSize || 12}px`;
+      if (boldBtn) {
+        boldBtn.className = `px-2 py-1 rounded-lg border font-bold transition ${box.bold ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-700 border-slate-200'}`;
+      }
+    }
+
+    function adjustSelectedBoxFontSize(delta) {
+      const exp = appState.activeExpedition;
+      const boxId = appState.selectedBoxId;
+      if (!boxId) return;
+      const box = appState.layouts[exp].boxes[boxId];
+      if (!box) return;
+      pushHistorySnapshot();
+      box.fontSize = Math.max(8, Math.min(28, (box.fontSize || 12) + delta));
+      renderCanvas();
+      saveStateToStorage();
+    }
+
+    function setSelectedBoxAlign(align) {
+      const exp = appState.activeExpedition;
+      const boxId = appState.selectedBoxId;
+      if (!boxId) return;
+      const box = appState.layouts[exp].boxes[boxId];
+      if (!box) return;
+      pushHistorySnapshot();
+      box.align = align;
+      renderCanvas();
+      saveStateToStorage();
+    }
+
+    function toggleSelectedBoxBold() {
+      const exp = appState.activeExpedition;
+      const boxId = appState.selectedBoxId;
+      if (!boxId) return;
+      const box = appState.layouts[exp].boxes[boxId];
+      if (!box) return;
+      pushHistorySnapshot();
+      box.bold = !box.bold;
+      renderCanvas();
+      saveStateToStorage();
+    }
+
+    function toggleSnap() {
+      appState.snapEnabled = !appState.snapEnabled;
+      const btn = document.getElementById('btnToggleSnap');
+      if (btn) {
+        btn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.snapEnabled ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
+      }
+      saveStateToStorage();
+      showToast(appState.snapEnabled ? 'Snap Magnet Aktif' : 'Snap Magnet Nonaktif', 'info');
+    }
+
+    function toggleGuideBoxes() {
+      appState.showGuides = !appState.showGuides;
+      const btn = document.getElementById('btnToggleGuides');
+      if (btn) {
+        btn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.showGuides ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
+      }
+      renderCanvas();
+      saveStateToStorage();
+    }
+
+    function resetCurrentTemplateLayout() {
+      const exp = appState.activeExpedition;
+      pushHistorySnapshot();
+      const defaults = getDefaultLayouts();
+      appState.layouts[exp] = defaults[exp];
+      renderCanvas();
+      saveStateToStorage();
+      showToast(`Posisi kotak Bank ${exp} dikembalikan ke default presisi!`, 'success');
+    }
+
+    function updateCanvasResponsiveScale() {
+      const outer = document.getElementById('previewOuterWrapper');
+      const scaleContainer = document.getElementById('previewScaleContainer');
+      const canvasEl = document.getElementById('statementCanvas');
+      const indicator = document.getElementById('canvasScaleIndicator');
+      if (!outer || !scaleContainer || !canvasEl) return;
+
+      const availableWidth = outer.clientWidth - 8;
+      const activeLayout = appState.layouts[appState.activeExpedition] || {};
+      const logicalWidth = activeLayout.canvasWidth || 900;
+      const logicalHeight = activeLayout.canvasHeight || 410;
+      let scale = Math.min(1, Math.max(0.05, availableWidth / logicalWidth));
+      // Layar HP/tablet: preview yang menempel di atas dibuat ringkas (tinggi dibatasi)
+      if (window.matchMedia('(max-width: 1279px)').matches) {
+        const maxPreviewH = window.innerWidth < 640 ? 130 : 180;
+        scale = Math.min(scale, maxPreviewH / logicalHeight);
+      }
+
+      scaleContainer.style.transform = `scale(${scale})`;
+      scaleContainer.style.height = `${Math.round(logicalHeight * scale)}px`;
+      if (indicator) indicator.textContent = `Skala: ${Math.round(scale * 100)}%`;
+    }
+
+    /*************************************************************************
+     * EKSPOR PRESISI TEKS: html2canvas menggambar teks sekitar 5-8px lebih rendah
+     * dari tampilan browser. Jadi posisi tiap baris teks diukur langsung dari
+     * browser (sama persis dengan preview), lalu digambar ulang di atas hasil
+     * capture dengan Canvas 2D.
+     *************************************************************************/
+    function collectFieldTextRuns(rootEl) {
+      const runs = [];
+      const rootRect = rootEl.getBoundingClientRect();
+      const range = document.createRange();
+
+      rootEl.querySelectorAll('.field-content').forEach(fc => {
+        const walker = document.createTreeWalker(fc, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          const text = node.data;
+          if (!text || !text.trim()) continue;
+          const parent = node.parentElement;
+          if (!parent) continue;
+          const cs = getComputedStyle(parent);
+          if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+
+          let line = null;
+          const flush = () => { if (line && line.text.trim()) runs.push(line); line = null; };
+
+          for (let i = 0; i < text.length; i++) {
+            range.setStart(node, i);
+            range.setEnd(node, i + 1);
+            const r = range.getClientRects()[0];
+            if (!r || (r.width === 0 && r.height === 0)) continue; // newline / karakter tak terlihat
+            const top = r.top - rootRect.top;
+            if (!line || Math.abs(top - line.top) > 2) {
+              flush();
+              line = {
+                text: '',
+                x: r.left - rootRect.left,
+                top,
+                font: `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`,
+                color: cs.color,
+                letterSpacing: cs.letterSpacing
+              };
+            }
+            line.text += text[i];
+          }
+          flush();
+        }
+      });
+      return runs;
+    }
+
+    function drawFieldTextRuns(targetCanvas, runs, logicalWidth) {
+      const ctx = targetCanvas.getContext('2d');
+      const k = targetCanvas.width / logicalWidth;
+      ctx.save();
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+      runs.forEach(run => {
+        ctx.font = run.font;
+        ctx.fillStyle = run.color;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = (run.letterSpacing && run.letterSpacing !== 'normal') ? run.letterSpacing : '0px';
+        const m = ctx.measureText(run.text);
+        const ascent = (m.fontBoundingBoxAscent !== undefined) ? m.fontBoundingBoxAscent : m.actualBoundingBoxAscent;
+        ctx.fillText(run.text, run.x, run.top + ascent);
+      });
+      ctx.restore();
+    }
+
+    async function exportStatement(format = 'pdf') {
+      const canvasEl = document.getElementById('statementCanvas');
+      if (!canvasEl) return;
+
+      const exp = appState.activeExpedition;
+      const layout = appState.layouts[exp];
+      const akun = (appState.templatesData[exp].p4 || 'Statement').replace(/[^a-zA-Z0-9_-]/g, '');
+      const filenameBase = `Statement_Bank_${exp}_${akun}`;
+
+      const btnPNG = document.getElementById('btnExportPNG');
+      const btnPDF = document.getElementById('btnExportPDF');
+      if (btnPNG) btnPNG.disabled = true;
+      if (btnPDF) btnPDF.disabled = true;
+
+      showToast(`Menyiapkan file ${format.toUpperCase()} presisi 1:1...`, 'info');
+
+      const exportHost = document.createElement('div');
+      exportHost.style.position = 'fixed';
+      exportHost.style.left = '0px';
+      exportHost.style.top = '0px';
+      exportHost.style.width = `${layout.canvasWidth || 900}px`;
+      exportHost.style.height = `${layout.canvasHeight}px`;
+      exportHost.style.zIndex = '-9999';
+      exportHost.style.pointerEvents = 'none';
+      exportHost.style.overflow = 'hidden';
+      exportHost.style.backgroundColor = '#ffffff';
+
+      const clonedCanvasEl = canvasEl.cloneNode(true);
+      clonedCanvasEl.classList.remove('show-guides');
+      clonedCanvasEl.classList.add('export-clean-mode');
+      clonedCanvasEl.style.transform = 'none';
+      clonedCanvasEl.style.width = `${layout.canvasWidth || 900}px`;
+      clonedCanvasEl.style.height = `${layout.canvasHeight}px`;
+      clonedCanvasEl.style.margin = '0';
+      clonedCanvasEl.style.boxShadow = 'none';
+
+      clonedCanvasEl.querySelectorAll('.selected-box').forEach(el => el.classList.remove('selected-box'));
+      clonedCanvasEl.querySelectorAll('.field-badge, .resize-handle, .snap-line-x, .snap-line-y').forEach(el => el.remove());
+
+      exportHost.appendChild(clonedCanvasEl);
+      document.body.appendChild(exportHost);
+
+      try {
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        await new Promise(r => setTimeout(r, 80));
+
+        // Ukur posisi teks dari browser (identik dengan preview), lalu sembunyikan teks
+        // di salinan agar tidak tergambar dua kali oleh html2canvas.
+        const textRuns = collectFieldTextRuns(clonedCanvasEl);
+        clonedCanvasEl.querySelectorAll('.field-content, .field-content *').forEach(el => {
+          el.style.setProperty('color', 'transparent', 'important');
+        });
+
+        const capturedCanvas = await html2canvas(clonedCanvasEl, {
+          scale: Math.min(3, 3000 / (layout.canvasWidth || 900)),
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          x: 0,
+          y: 0,
+          scrollX: 0,
+          scrollY: 0,
+          width: layout.canvasWidth || 900,
+          height: layout.canvasHeight,
+          windowWidth: layout.canvasWidth || 900,
+          windowHeight: layout.canvasHeight
+        });
+
+        drawFieldTextRuns(capturedCanvas, textRuns, layout.canvasWidth || 900);
+
+        const imgData = capturedCanvas.toDataURL('image/png', 1.0);
+
+        if (format === 'png') {
+          const link = document.createElement('a');
+          link.download = `${filenameBase}.png`;
+          link.href = imgData;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast(`PNG berhasil diunduh!`, 'success');
+        } else {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+          const pageWidthMM = 210;
+          const renderedHeightMM = (capturedCanvas.height * pageWidthMM) / capturedCanvas.width;
+          pdf.addImage(imgData, 'PNG', 0, 0, pageWidthMM, renderedHeightMM, undefined, 'FAST');
+          pdf.save(`${filenameBase}_A4.pdf`);
+          showToast(`PDF A4 berhasil diunduh!`, 'success');
+        }
+      } catch (err) {
+        console.error('Export Error:', err);
+        showToast('Terjadi kendala saat mengekspor dokumen.', 'error');
+      } finally {
+        if (exportHost.parentNode) exportHost.parentNode.removeChild(exportHost);
+        if (btnPNG) btnPNG.disabled = false;
+        if (btnPDF) btnPDF.disabled = false;
+      }
+    }
+
+    function openDatabaseModal() {
+      const modal = document.getElementById('databaseModal');
+      if (modal) { modal.classList.remove('hidden'); renderDatabaseTable(); }
+    }
+    function closeDatabaseModal() {
+      const modal = document.getElementById('databaseModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function renderDatabaseTable() {
+      const tbody = document.getElementById('databaseTableBody');
+      const searchEl = document.getElementById('dbSearchInput');
+      const countText = document.getElementById('dbTotalRowsText');
+      if (!tbody) return;
+
+      const q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+      const filtered = databaseB.filter(item => {
+        if (!q) return true;
+        return (item.keyword || '').toLowerCase().includes(q) || (item.alamat || '').toLowerCase().includes(q) || (item.kancaKanwil || '').toLowerCase().includes(q);
+      });
+
+      if (countText) countText.textContent = `Menampilkan ${filtered.length} dari ${databaseB.length} unit kerja`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">Tidak ada data yang cocok</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-2.5 px-3 font-mono text-[11px] text-indigo-700 font-semibold">${escapeHtml(item.keyword)}</td>
+          <td class="py-2.5 px-3 text-slate-600">${escapeHtml(item.alamat)}</td>
+          <td class="py-2.5 px-3 font-bold text-slate-900">${escapeHtml(item.kancaKanwil)}</td>
+          <td class="py-2.5 px-3 text-right">
+            <button onclick="useDatabaseEntryNow('${item.id}')" class="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-[11px] mr-1">Pakai</button>
+            <button onclick="deleteDatabaseEntry('${item.id}')" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-[11px]">Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function addDatabaseEntry() {
+      const kwEl = document.getElementById('newDbKeyword');
+      const alEl = document.getElementById('newDbAlamatLengkap');
+      const kcEl = document.getElementById('newDbKancaKanwil');
+      const keyword = (kwEl?.value || '').trim();
+      const alamat = (alEl?.value || '').trim();
+      const kancaKanwil = (kcEl?.value || '').trim();
+
+      if (!keyword || !kancaKanwil) {
+        showToast('Mohon isi Keyword dan Kanca/Kanwil!', 'error');
+        return;
+      }
+
+      databaseB.unshift({ id: 'db-' + Date.now(), keyword, alamat: alamat || keyword, kancaKanwil });
+      if (kwEl) kwEl.value = '';
+      if (alEl) alEl.value = '';
+      if (kcEl) kcEl.value = '';
+
+      saveDatabaseBToStorage();
+      renderDatabaseTable();
+      appState.templatesData.B.p2 = matchBankBDatabase(appState.parsed.alamatUnitRaw);
+      renderDynamicForm();
+      renderCanvas();
+      showToast('Data unit berhasil ditambahkan!', 'success');
+    }
+
+    function useDatabaseEntryNow(id) {
+      const found = databaseB.find(r => r.id === id);
+      if (!found) return;
+      appState.templatesData.B.p2 = found.kancaKanwil;
+      renderDynamicForm();
+      renderCanvas();
+      saveStateToStorage();
+      closeDatabaseModal();
+      showToast(`Poin 2 diisi: ${found.kancaKanwil}`, 'success');
+    }
+
+    function deleteDatabaseEntry(id) {
+      databaseB = databaseB.filter(r => r.id !== id);
+      saveDatabaseBToStorage();
+      renderDatabaseTable();
+    }
+
+    function resetDefaultDatabaseB() {
+      databaseB = [...DEFAULT_DB_BANK_B];
+      saveDatabaseBToStorage();
+      renderDatabaseTable();
+      showToast('Database dikembalikan ke bawaan.', 'info');
+    }
+
+    function exportDatabaseJSON() {
+      const blob = new Blob([JSON.stringify(databaseB, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'database_bank_b.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('database_bank_b.json diunduh!', 'success');
+    }
+
+    function importDatabaseFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed)) {
+            databaseB = parsed;
+            saveDatabaseBToStorage();
+            renderDatabaseTable();
+            appState.templatesData.B.p2 = matchBankBDatabase(appState.parsed.alamatUnitRaw);
+            renderDynamicForm();
+            renderCanvas();
+            showToast(`Berhasil mengimpor ${databaseB.length} data!`, 'success');
+          }
+        } catch (_) {
+          showToast('Format file JSON tidak valid.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function openTemplateAssetsModal() {
+      const m = document.getElementById('templateAssetsModal');
+      if (m) { m.classList.remove('hidden'); renderTemplateAssetConfigList(); }
+    }
+    function closeTemplateAssetsModal() {
+      const m = document.getElementById('templateAssetsModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    function renderTemplateAssetConfigList() {
+      const listEl = document.getElementById('templateAssetConfigList');
+      if (!listEl) return;
+      listEl.innerHTML = ['A', 'B', 'C', 'D', 'E'].map(exp => {
+        const cfg = appState.templateSources[exp] || { mode: 'builtin', githubFile: `Template_Statement_Bank_${exp}_Kosong.png` };
+        return `
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="font-bold text-slate-800 text-xs">Template Bank ${exp}</div>
+              <div class="text-[11px] text-slate-500 font-mono">./${cfg.githubFile}</div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button onclick="setTemplateSourceMode('${exp}', 'builtin')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'builtin' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}">Vektor Bawaan</button>
+              <button onclick="setTemplateSourceMode('${exp}', 'github')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'github' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}">Folder GitHub</button>
+              <label class="cursor-pointer px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition ${cfg.mode === 'custom' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'}">
+                <span>Upload</span>
+                <input type="file" accept="image/*" class="hidden" onchange="handleCustomTemplateUpload(event, '${exp}')" />
+              </label>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setTemplateSourceMode(exp, mode) {
+      appState.templateSources[exp].mode = mode;
+      renderTemplateAssetConfigList();
+      renderCanvas();
+      saveStateToStorage();
+    }
+
+    function handleCustomTemplateUpload(event, exp) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        appState.templateSources[exp].customDataUrl = e.target.result;
+        appState.templateSources[exp].mode = 'custom';
+        renderTemplateAssetConfigList();
+        renderCanvas();
+        saveStateToStorage();
+        showToast(`Background Bank ${exp} diunggah!`, 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openConfirmResetModal() {
+      const m = document.getElementById('confirmResetModal');
+      if (m) m.classList.remove('hidden');
+    }
+    function closeConfirmResetModal() {
+      const m = document.getElementById('confirmResetModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    function confirmResetWorkspace() {
+      const fresh = createInitialState();
+      fresh.rawWhatsapp = '';
+      appState = fresh;
+      const rawInput = document.getElementById('rawWhatsappInput');
+      if (rawInput) rawInput.value = '';
+      populateAddressHelperInputs();
+      updateActiveExpeditionTabs();
+      renderDynamicForm();
+      renderCanvas();
+      saveStateToStorage();
+      closeConfirmResetModal();
+      showToast('Lembar kerja baru siap!', 'info');
+    }
+
+    function loadSampleWhatsApp() {
+      const sample = `1. Nama bank = B\n2. Alamat = Jl.Raya Bekasi Km.21,Ruko No.A2/18-19,Rw.3 kec.cakung\n3. Kantor cabang = Pulogadung trade center\n4. No. rekening = 7080507857\n5. Nama pengguna = Ago Hardianto Putra\n6. Alamat lengkap indonesia = Plumbon Rt.03/10 Plumbon Mojolaban Sukoharjo`;
+      const rawInput = document.getElementById('rawWhatsappInput');
+      if (rawInput) rawInput.value = sample;
+      appState.rawWhatsapp = sample;
+      parseRawWhatsapp(sample, true);
+    }
+
+    async function pasteFromClipboard() {
+      const rawInput = document.getElementById('rawWhatsappInput');
+      if (!rawInput) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            rawInput.value = text;
+            appState.rawWhatsapp = text;
+            parseRawWhatsapp(text, true);
+            return;
+          }
+        }
+      } catch (_) {}
+      rawInput.focus();
+      showToast('Gunakan Ctrl+V untuk menempel teks.', 'info');
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const colors = { success: 'bg-emerald-600 text-white', error: 'bg-rose-600 text-white', info: 'bg-slate-900 text-white' };
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold transition-all duration-200 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 220);
+      }, 2800);
+    }
+
+    /*************************************************************************
+     * FITUR BARU: (1) Skala & shrink gambar template, (2) panduan hilang saat
+     * klik di luar preview, (3) preview freeze di atas pada layar HP
+     *************************************************************************/
+    let previewGuidesActive = true; // sementara (tidak disimpan): true = garis & label bantu tampil
+
+    // Bentuk proporsional bawaan gambar template: Bank A, C, E otomatis dikecilkan 90% ke arah atas-bawah.
+    // Slider "Atur Gambar Template" tetap menampilkan 100% sebagai titik awal.
+    const BG_BASE_FACTORS = {
+      A: { sy: 0.9 },
+      C: { sy: 0.9 },
+      E: { sy: 0.9 }
+    };
+
+    function getBgAdjust(exp) {
+      if (!appState.bgAdjust) appState.bgAdjust = {};
+      const cur = appState.bgAdjust[exp] || {};
+      const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 100);
+      appState.bgAdjust[exp] = { scale: num(cur.scale), sx: num(cur.sx), sy: num(cur.sy) };
+      return appState.bgAdjust[exp];
+    }
+
+    function applyBgAdjust() {
+      const bg = document.getElementById('templateBackgroundLayer');
+      if (!bg) return;
+      const exp = appState.activeExpedition;
+      const a = getBgAdjust(exp);
+      const base = BG_BASE_FACTORS[exp] || {};
+      const baseX = base.sx || 1;
+      const baseY = base.sy || 1;
+      bg.style.transformOrigin = 'center center';
+      bg.style.transform = `scale(${(a.scale * a.sx * baseX) / 10000}, ${(a.scale * a.sy * baseY) / 10000})`;
+    }
+
+    function syncBgAdjustUI() {
+      const a = getBgAdjust(appState.activeExpedition);
+      [['Scale', 'scale'], ['Sx', 'sx'], ['Sy', 'sy']].forEach(([id, key]) => {
+        const input = document.getElementById(`bgAdjust${id}`);
+        const label = document.getElementById(`bgAdjust${id}Val`);
+        if (input && String(input.value) !== String(a[key])) input.value = a[key];
+        if (label) label.textContent = `${a[key]}%`;
+      });
+      const tpl = document.getElementById('bgAdjustTplLabel');
+      if (tpl) tpl.textContent = `Bank ${appState.activeExpedition}`;
+    }
+
+    function onBgAdjustInput(key, val) {
+      const a = getBgAdjust(appState.activeExpedition);
+      a[key] = Math.max(50, Math.min(150, Number(val) || 100));
+      applyBgAdjust();
+      syncBgAdjustUI();
+    }
+
+    function resetBgAdjust() {
+      appState.bgAdjust = appState.bgAdjust || {};
+      appState.bgAdjust[appState.activeExpedition] = { scale: 100, sx: 100, sy: 100 };
+      applyBgAdjust();
+      syncBgAdjustUI();
+      saveStateToStorage();
+      showToast(`Gambar template Bank ${appState.activeExpedition} dikembalikan ke 100%`, 'success');
+    }
+
+    /*************************************************************************
+     * PRESET PENGATURAN PREVIEW (maksimal 5)
+     *************************************************************************/
+    const PRESET_STORAGE_KEY = 'STATEMENT_BANK_PREVIEW_PRESETS_V1';
+    const MAX_PRESETS = 5;
+
+    function readPresets() {
+      try {
+        const raw = localStorage.getItem(PRESET_STORAGE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr.slice(0, MAX_PRESETS) : [];
+      } catch (e) { return []; }
+    }
+
+    function writePresets(arr) {
+      try {
+        localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(arr));
+        return true;
+      } catch (e) {
+        showToast('Gagal menyimpan preset (penyimpanan browser penuh/diblokir).', 'error');
+        return false;
+      }
+    }
+
+    function captureCurrentPresetData() {
+      const bgAdjust = {};
+      ['A', 'B', 'C', 'D', 'E'].forEach(exp => { bgAdjust[exp] = { ...getBgAdjust(exp) }; });
+      return {
+        layouts: JSON.parse(JSON.stringify(appState.layouts)),
+        bgAdjust,
+        activeExpedition: appState.activeExpedition,
+        snapEnabled: !!appState.snapEnabled,
+        showGuides: !!appState.showGuides
+      };
+    }
+
+    function formatPresetDate(ts) {
+      const d = new Date(ts);
+      return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    }
+
+    function renderPresetList() {
+      const list = document.getElementById('presetList');
+      const badge = document.getElementById('presetCountBadge');
+      const presets = readPresets();
+      if (badge) badge.textContent = `${presets.length}/${MAX_PRESETS}`;
+      if (!list) return;
+      if (presets.length === 0) {
+        list.innerHTML = '<div class="px-3 py-2 rounded-lg bg-slate-50 border border-dashed border-slate-300 text-slate-400 text-center">Belum ada preset tersimpan</div>';
+        return;
+      }
+      list.innerHTML = presets.map((p, i) => `
+        <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-slate-800 truncate">${i + 1}. ${escapeHtml(p.name)}</div>
+            <div class="text-[10px] text-slate-400">${formatPresetDate(p.savedAt)}</div>
+          </div>
+          <button onclick="loadPreset('${p.id}')" class="px-2 py-1 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">Muat</button>
+          <button onclick="overwritePreset('${p.id}')" class="px-2 py-1 rounded-md bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold">Timpa</button>
+          <button onclick="deletePreset('${p.id}')" class="px-2 py-1 rounded-md bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 font-semibold">Hapus</button>
+        </div>`).join('');
+    }
+
+    function saveNewPreset() {
+      const presets = readPresets();
+      if (presets.length >= MAX_PRESETS) {
+        showToast(`Preset penuh (maks. ${MAX_PRESETS}). Hapus atau timpa salah satu preset.`, 'error');
+        return;
+      }
+      const input = document.getElementById('presetNameInput');
+      const name = ((input && input.value) || '').trim() || `Preset ${presets.length + 1}`;
+      presets.push({ id: 'p' + Date.now().toString(36), name, savedAt: Date.now(), data: captureCurrentPresetData() });
+      if (!writePresets(presets)) return;
+      if (input) input.value = '';
+      renderPresetList();
+      showToast(`Preset "${name}" tersimpan`, 'success');
+    }
+
+    function overwritePreset(id) {
+      const presets = readPresets();
+      const p = presets.find(x => x.id === id);
+      if (!p) return;
+      if (!confirm(`Timpa preset "${p.name}" dengan pengaturan preview saat ini?`)) return;
+      p.data = captureCurrentPresetData();
+      p.savedAt = Date.now();
+      if (!writePresets(presets)) return;
+      renderPresetList();
+      showToast(`Preset "${p.name}" diperbarui`, 'success');
+    }
+
+    function deletePreset(id) {
+      const presets = readPresets();
+      const p = presets.find(x => x.id === id);
+      if (!p) return;
+      if (!confirm(`Hapus preset "${p.name}"?`)) return;
+      if (!writePresets(presets.filter(x => x.id !== id))) return;
+      renderPresetList();
+      showToast(`Preset "${p.name}" dihapus`, 'info');
+    }
+
+    function loadPreset(id) {
+      const p = readPresets().find(x => x.id === id);
+      if (!p || !p.data) return;
+      const d = p.data;
+      pushHistorySnapshot();
+      if (d.layouts) appState.layouts = normalizeLayouts(JSON.parse(JSON.stringify(d.layouts)));
+      appState.bgAdjust = {};
+      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+        appState.bgAdjust[exp] = { ...(d.bgAdjust && d.bgAdjust[exp] ? d.bgAdjust[exp] : {}) };
+        getBgAdjust(exp); // lengkapi nilai default bila ada yang kosong
+      });
+      appState.snapEnabled = d.snapEnabled !== false;
+      appState.showGuides = d.showGuides !== false;
+      const snapBtn = document.getElementById('btnToggleSnap');
+      if (snapBtn) snapBtn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.snapEnabled ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
+      const guideBtn = document.getElementById('btnToggleGuides');
+      if (guideBtn) guideBtn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.showGuides ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
+      selectExpedition(['A', 'B', 'C', 'D', 'E'].includes(d.activeExpedition) ? d.activeExpedition : appState.activeExpedition);
+      setPreviewGuidesActive(true);
+      showToast(`Preset "${p.name}" dimuat`, 'success');
+    }
+
+    function setPreviewGuidesActive(active) {
+      if (previewGuidesActive === active) return;
+      previewGuidesActive = active;
+      const canvasEl = document.getElementById('statementCanvas');
+      if (canvasEl) canvasEl.classList.toggle('guides-idle', !active);
+    }
+
+    // Klik/sentuh di dalam area preview (toolbar + canvas) -> panduan muncul; di luar -> panduan hilang.
+    // Pakai fase capture supaya tetap terbaca walau elemen di dalam memanggil stopPropagation().
+    document.addEventListener('pointerdown', (e) => {
+      const area = document.getElementById('previewSection');
+      if (!area || !e.target || !e.target.closest) return;
+      setPreviewGuidesActive(!!e.target.closest('#previewSection'));
+    }, true);
+
+    /*************************************************************************
+     * GESER KOTAK PANDUAN DENGAN KEYBOARD (desktop): tombol panah.
+     * Panah = geser halus (1 piksel layar), Shift + panah = loncat 10x.
+     * Aktif hanya bila ada kotak terpilih, panduan sedang tampil (user baru klik di
+     * preview), dan kursor tidak sedang mengetik di kolom isian.
+     *************************************************************************/
+    let lastArrowMoveTs = 0;
+    let arrowSaveTimer = null;
+
+    window.addEventListener('keydown', e => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!window.matchMedia('(min-width: 1280px)').matches) return; // hanya layar desktop
+      if (!previewGuidesActive || !appState.selectedBoxId) return;
+
+      const ae = document.activeElement;
+      const tag = ae ? ae.tagName : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (ae && ae.isContentEditable)) return;
+      if (document.querySelector('#databaseModal:not(.hidden), #templateAssetsModal:not(.hidden), #confirmResetModal:not(.hidden)')) return;
+
+      const exp = appState.activeExpedition;
+      const layout = appState.layouts[exp];
+      const box = layout && layout.boxes[appState.selectedBoxId];
+      if (!box) return;
+
+      e.preventDefault();
+
+      const scale = Math.max(0.05, getCurrentCanvasScale());
+      const base = Math.max(1, Math.round(1 / scale)); // 1 piksel layar dalam satuan kanvas
+      const step = e.shiftKey ? base * 10 : base;
+      const maxX = (layout.canvasWidth || 900) - box.w;
+      const maxY = layout.canvasHeight - box.h;
+
+      const now = Date.now();
+      if (now - lastArrowMoveTs > 800) pushHistorySnapshot(); // satu rangkaian tekanan = satu langkah undo
+      lastArrowMoveTs = now;
+
+      if (e.key === 'ArrowLeft') box.x = Math.max(0, box.x - step);
+      if (e.key === 'ArrowRight') box.x = Math.min(maxX, box.x + step);
+      if (e.key === 'ArrowUp') box.y = Math.max(0, box.y - step);
+      if (e.key === 'ArrowDown') box.y = Math.min(maxY, box.y + step);
+
+      renderCanvas();
+      clearTimeout(arrowSaveTimer);
+      arrowSaveTimer = setTimeout(saveStateToStorage, 300);
+    });
+
+    window.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault(); undoCanvasAction();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault(); redoCanvasAction();
+        }
+      }
+    });
+
+    window.addEventListener('resize', () => { updateCanvasResponsiveScale(); });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hadSaved = loadStateFromStorage();
+      updateDbBadge();
+      const rawInput = document.getElementById('rawWhatsappInput');
+      if (rawInput) rawInput.value = appState.rawWhatsapp || '';
+
+      if (!hadSaved && appState.rawWhatsapp) {
+        parseRawWhatsapp(appState.rawWhatsapp, false);
+      } else {
+        populateAddressHelperInputs();
+        updateActiveExpeditionTabs();
+        renderDynamicForm();
+        renderCanvas();
+      }
+
+      renderBankLogos();
+      renderPresetList();
+      tryFetchGithubDatabaseB();
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
