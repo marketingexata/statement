@@ -567,7 +567,7 @@
 
           <div class="inline-flex items-center gap-1.5 ml-auto bg-slate-100 border border-slate-200 rounded-lg px-2 py-1" title="Blur teks mengikuti kualitas gambar template; geser slider untuk manual">
             <i data-lucide="droplets" class="w-3.5 h-3.5 text-slate-600"></i>
-            <label class="inline-flex items-center gap-1 font-semibold text-slate-700 cursor-pointer"><input id="blurAutoToggle" type="checkbox" checked onchange="onBlurAutoToggle(this.checked)" />Blur auto</label>
+            <label class="inline-flex items-center gap-1 font-semibold text-slate-700 cursor-pointer"><input id="blurAutoToggle" type="checkbox" onchange="onBlurAutoToggle(this.checked)" />Blur auto</label>
             <input id="blurSlider" type="range" min="0" max="8" step="0.1" value="0" oninput="onBlurSlider(this.value)" class="w-24 accent-indigo-600" />
             <span id="blurValue" class="font-mono text-[11px] text-slate-700 w-20 text-right">0.0px</span>
           </div>
@@ -1422,6 +1422,7 @@
           }
           appState.githubTemplatesDefault = true;
           appState.blur = appState.blur || {};
+          if (!appState.blurDefaultOff) { Object.values(appState.blur).forEach(c => { c.auto = false; }); appState.blurDefaultOff = true; }
           // BCA: alamat menurun tanpa spasi antar baris (migrasi data lama)
           if (appState.templatesData.A.p6) appState.templatesData.A.p6 = String(appState.templatesData.A.p6).replace(/\n{2,}/g, '\n');
           // Migrasi sekali: data lama Bank A/C/D yang tersimpan ikut diberi awalan "KCP"
@@ -3106,7 +3107,7 @@
     /* ---------- BLUR TEKS (otomatis mengikuti kualitas gambar template + slider manual) ---------- */
     function getBlurCfg(exp) {
       appState.blur = appState.blur || {};
-      if (!appState.blur[exp]) appState.blur[exp] = { auto: true, manual: 0, est: null, sig: '' };
+      if (!appState.blur[exp]) appState.blur[exp] = { auto: false, manual: 0, est: null, sig: '' };
       return appState.blur[exp];
     }
     function getEffectiveBlur(exp) {
@@ -3737,7 +3738,7 @@
     // Bentuk proporsional bawaan gambar template: Bank A, C, E otomatis dikecilkan 90% ke arah atas-bawah.
     // Slider "Atur Gambar Template" tetap menampilkan 100% sebagai titik awal.
     const BG_BASE_FACTORS = {
-      A: { sy: 0.9 },
+      A: { sy: 0.99 }, // BCA: 90% bawaan x 110% shrink atas-bawah (slider tetap 100%)
       C: { sy: 0.9 },
       E: { sy: 0.9 }
     };
