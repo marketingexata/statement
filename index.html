@@ -38,28 +38,16 @@
 
     /* Custom Font Classes for each Bank Template */
     .font-bank-A, .font-bank-A * {
-      font-family: 'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif;
+      font-family: 'Montserrat', sans-serif;
       font-weight: 700;
       font-style: normal !important;
-      font-synthesis: none !important;
+      font-synthesis: weight; /* Mencegah browser memiringkan font BCA */
     }
     .font-bank-B { font-family: 'Ebrima', 'Nirmala UI', 'Noto Sans', sans-serif; font-weight: 400; }
     .font-bank-C { font-family: Arial, 'Liberation Sans', Helvetica, sans-serif; font-weight: 400; }
     .font-bank-D { font-family: 'Montserrat', sans-serif; font-weight: 500; }
     .font-bank-E { font-family: 'Times New Roman', Times, 'Liberation Serif', serif; font-weight: 400; }
-    .font-bank-F, .font-bank-F * {
-      font-family: 'Mazin SemiBold', 'Montserrat', sans-serif;
-      font-weight: 600;
-      font-style: normal !important;
-      font-synthesis: none !important;
-    }
-
-    /* Paksa tegak lurus (lawan arah italic bawaan file .woff2 BCA & Permata) */
-    .font-bank-A .field-content,
-    .font-bank-F .field-content {
-      transform: skewX(11deg);
-      transform-origin: left bottom;
-    }
+    .font-bank-F { font-family: Arial, 'Liberation Sans', Helvetica, sans-serif; font-weight: 700; font-style: normal; }
 
     /* Shape kotak: selalu di belakang semua teks (z-index lebih rendah dari .canvas-field-box biasa = 20) */
     .canvas-field-box.type-shape,
@@ -566,6 +554,8 @@
               <option value="times">Times New Roman</option>
               <option value="calibri-light">Calibri Light</option>
               <option value="mazin-semibold">Mazin SemiBold</option>
+              <option value="montserrat-bold">Montserrat Bold</option>
+              <option value="arial-bold">Arial Bold</option>
             </select>
             <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
               <button onclick="adjustSelectedBoxFontSize(-1)" class="px-2 py-1 hover:bg-white rounded-md font-bold text-slate-700" title="Perkecil Font">A-</button>
@@ -2384,12 +2374,12 @@
     }
 
     const EXPEDITION_META = {
-      A: { name: 'BCA', fontLabel: 'Font: LyuLin Heavy (kapital)' },
+      A: { name: 'BCA', fontLabel: 'Font: Montserrat Bold (kapital)' },
       B: { name: 'BRI', fontLabel: 'Font: Arial Bold' },
       C: { name: 'BNI', fontLabel: 'Font: Calibri' },
       D: { name: 'MANDIRI', fontLabel: 'Font: Montserrat' },
       E: { name: 'BSI', fontLabel: 'Font: Times New Roman' },
-      F: { name: 'PERMATA', fontLabel: 'Font: Mazin SemiBold' }
+      F: { name: 'PERMATA', fontLabel: 'Font: Arial Bold' }
     };
 
     function selectExpedition(exp) {
@@ -3223,9 +3213,11 @@
       'times':          { label: 'Times New Roman', css: "'Times New Roman', Times, 'Liberation Serif', serif", weight: 400 },
       'lyulin-bold':    { label: 'Lyulin Bold',     css: "'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif", weight: 700 },
       'calibri-light':  { label: 'Calibri Light',   css: "'Calibri Light', 'Calibri', 'Carlito', 'Segoe UI', sans-serif", weight: 300 },
-      'mazin-semibold': { label: 'Mazin SemiBold',  css: "'Mazin SemiBold', 'Montserrat', sans-serif", weight: 600 }
+      'mazin-semibold': { label: 'Mazin SemiBold',  css: "'Mazin SemiBold', 'Montserrat', sans-serif", weight: 600 },
+      'montserrat-bold': { label: 'Montserrat Bold', css: "'Montserrat', sans-serif", weight: 700 },
+      'arial-bold':     { label: 'Arial Bold',      css: "Arial, 'Liberation Sans', Helvetica, sans-serif", weight: 700 }
     };
-    const EXP_FONT = { A: 'lyulin-bold', B: 'ebrima', C: 'arial', D: 'montserrat', E: 'times', F: 'mazin-semibold' };
+    const EXP_FONT = { A: 'montserrat-bold', B: 'ebrima', C: 'arial', D: 'montserrat', E: 'times', F: 'arial-bold' };
 
     function getBoxFont(exp, box) {
       const def = FONT_OPTIONS[(box && box.fontKey) || EXP_FONT[exp]] || FONT_OPTIONS[EXP_FONT[exp]];
@@ -3580,13 +3572,7 @@
       const rootRect = rootEl.getBoundingClientRect();
       const range = document.createRange();
 
-      // Matikan sementara skew CSS saat mengukur titik koordinat huruf agar posisi X tidak meleset
-      const skewedEls = rootEl.querySelectorAll('.font-bank-A .field-content, .font-bank-F .field-content');
-      skewedEls.forEach(el => { el.style.transform = 'none'; });
-
       rootEl.querySelectorAll('.field-content').forEach(fc => {
-        const boxEl = fc.closest('.canvas-field-box');
-        const needUnskew = boxEl && (boxEl.classList.contains('font-bank-A') || boxEl.classList.contains('font-bank-F'));
         const walker = document.createTreeWalker(fc, NodeFilter.SHOW_TEXT);
         let node;
         while ((node = walker.nextNode())) {
@@ -3604,7 +3590,7 @@
             range.setStart(node, i);
             range.setEnd(node, i + 1);
             const r = range.getClientRects()[0];
-            if (!r || (r.width === 0 && r.height === 0)) continue;
+            if (!r || (r.width === 0 && r.height === 0)) continue; // newline / karakter tak terlihat
             const top = r.top - rootRect.top;
             if (!line || Math.abs(top - line.top) > 2) {
               flush();
@@ -3612,11 +3598,10 @@
                 text: '',
                 x: r.left - rootRect.left,
                 top,
-                font: `normal ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`,
+                font: `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`,
                 color: cs.color,
                 blur: parseFloat(fc.dataset.blur) || 0,
-                letterSpacing: cs.letterSpacing,
-                unskewDeg: needUnskew ? 11 : 0
+                letterSpacing: cs.letterSpacing
               };
             }
             line.text += text[i];
@@ -3641,27 +3626,17 @@
         const m = ctx.measureText(run.text);
         const ascent = (m.fontBoundingBoxAscent !== undefined) ? m.fontBoundingBoxAscent : m.actualBoundingBoxAscent;
         const bl = (run.blur || 0) * k;
-        const baseY = run.top + ascent;
-
-        ctx.save();
-        ctx.translate(run.x, baseY);
-        if (run.unskewDeg) {
-          // Miringkan balik huruf di atas garis dasar (baseline) supaya berdiri tegak lurus
-          ctx.transform(1, 0, Math.tan((run.unskewDeg * Math.PI) / 180), 1, 0, 0);
-        }
-
         if (bl > 0 && 'filter' in ctx) {
           ctx.filter = `blur(${bl}px)`;
-          ctx.fillText(run.text, 0, 0);
+          ctx.fillText(run.text, run.x, run.top + ascent);
           ctx.filter = 'none';
-        } else if (bl > 0) {
+        } else if (bl > 0) {                     // cadangan untuk browser tanpa ctx.filter (mis. Safari)
           const OFF = 20000;
-          ctx.shadowColor = run.color; ctx.shadowBlur = bl * 1.6; ctx.shadowOffsetX = OFF * k;
-          ctx.fillText(run.text, -OFF, 0);
+          ctx.save(); ctx.shadowColor = run.color; ctx.shadowBlur = bl * 1.6; ctx.shadowOffsetX = OFF * k;
+          ctx.fillText(run.text, run.x - OFF, run.top + ascent); ctx.restore();
         } else {
-          ctx.fillText(run.text, 0, 0);
+          ctx.fillText(run.text, run.x, run.top + ascent);
         }
-        ctx.restore();
       });
       ctx.restore();
     }
