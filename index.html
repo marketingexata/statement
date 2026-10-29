@@ -37,11 +37,17 @@
     }
 
     /* Custom Font Classes for each Bank Template */
-    .font-bank-A { font-family: 'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif; font-weight: 700; }
+    .font-bank-A, .font-bank-A * {
+      font-family: 'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-style: normal !important;
+      font-synthesis: weight; /* Mencegah browser memiringkan font BCA */
+    }
     .font-bank-B { font-family: 'Ebrima', 'Nirmala UI', 'Noto Sans', sans-serif; font-weight: 400; }
     .font-bank-C { font-family: Arial, 'Liberation Sans', Helvetica, sans-serif; font-weight: 400; }
     .font-bank-D { font-family: 'Montserrat', sans-serif; font-weight: 500; }
     .font-bank-E { font-family: 'Times New Roman', Times, 'Liberation Serif', serif; font-weight: 400; }
+    .font-bank-F { font-family: 'Mazin SemiBold', 'Montserrat', sans-serif; font-weight: 600; font-style: normal; }
 
     /* Shape kotak: selalu di belakang semua teks (z-index lebih rendah dari .canvas-field-box biasa = 20) */
     .canvas-field-box.type-shape,
@@ -209,7 +215,7 @@
     /* Kanvas besar (mis. 2217px) tidak boleh melebarkan halaman: preview selalu diskalakan agar muat */
     main > section { min-width: 0; }
     #previewViewport { min-width: 0; max-width: 100%; width: 100%; overflow: hidden; }
-    #previewOuterWrapper { min-width: 0; overflow: hidden !important; }
+	#previewOuterWrapper { min-width: 0; overflow: hidden; }
 
     /* ===== Layar HP / tablet: preview menempel (freeze) di bagian atas halaman ===== */
     @media (max-width: 1279px) {
@@ -349,7 +355,7 @@
         </div>
 
         <div class="p-3 sm:p-4">
-          <div class="grid grid-cols-5 gap-2" id="templateSelectorGrid">
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="templateSelectorGrid">
             <button onclick="selectExpedition('A')" id="tab-exp-A" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
               <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="A"></span>
               <span class="text-[11px] font-bold text-slate-800">BCA</span>
@@ -373,6 +379,11 @@
             <button onclick="selectExpedition('E')" id="tab-exp-E" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
               <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="E"></span>
               <span class="text-[11px] font-bold text-slate-800">BSI</span>
+            </button>
+
+            <button onclick="selectExpedition('F')" id="tab-exp-F" class="exp-tab-btn group flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all">
+              <span class="bank-logo-slot w-full h-9 flex items-center justify-center mb-1" data-bank="F"></span>
+              <span class="text-[11px] font-bold text-slate-800">PERMATA</span>
             </button>
           </div>
         </div>
@@ -534,7 +545,16 @@
           </button>
 
           <div id="selectedBoxControls" class="hidden items-center gap-1.5 flex-wrap">
-            <select id="selectedBoxFontSelect" onchange="setSelectedBoxFont(this.value)" class="px-1.5 py-1 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold" title="Jenis font"><option value="montserrat">Montserrat</option><option value="ebrima">Ebrima</option><option value="arial">Arial</option><option value="gilroy-medium">Gilroy-Medium</option><option value="lyulin-bold">Lyulin Bold</option><option value="times">Times New Roman</option><option value="calibri-light">Calibri Light</option></select>
+            <select id="selectedBoxFontSelect" onchange="setSelectedBoxFont(this.value)" class="px-1.5 py-1 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold" title="Jenis font">
+              <option value="montserrat">Montserrat</option>
+              <option value="ebrima">Ebrima</option>
+              <option value="arial">Arial</option>
+              <option value="gilroy-medium">Gilroy-Medium</option>
+              <option value="lyulin-bold">Lyulin Bold</option>
+              <option value="times">Times New Roman</option>
+              <option value="calibri-light">Calibri Light</option>
+              <option value="mazin-semibold">Mazin SemiBold</option>
+            </select>
             <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
               <button onclick="adjustSelectedBoxFontSize(-1)" class="px-2 py-1 hover:bg-white rounded-md font-bold text-slate-700" title="Perkecil Font">A-</button>
               <input id="selectedBoxFontSizeInput" type="number" min="6" max="400" step="0.5" onchange="pushHistorySnapshot(); setSelectedBoxFontSize(this.value)" class="w-14 px-1 text-center bg-transparent font-mono text-[11px] font-semibold text-slate-700 outline-none" title="Ukuran font (px)" />
@@ -636,8 +656,11 @@
             <span class="inline-block w-2 h-2 rounded-full bg-blue-500 ml-2"></span>
             <span>Biru (A–C): Periode / Saldo</span>
           </div>
-          <div class="flex items-center gap-2">
-            <span id="canvasScaleIndicator" class="font-mono text-slate-400">Skala: 100%</span>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="stepPreviewZoom(-0.15)" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-[11px]" title="Zoom Out">−</button>
+            <span id="canvasScaleIndicator" class="font-mono text-slate-300">Skala: 100%</span>
+            <button type="button" onclick="stepPreviewZoom(0.15)" class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-[11px]" title="Zoom In">+</button>
+            <button type="button" onclick="resetPreviewZoom()" class="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-amber-300 font-semibold text-[10px]" title="Reset Zoom (Scroll/Pinch)">Reset Zoom</button>
           </div>
         </div>
 
@@ -835,21 +858,22 @@
      *************************************************************************/
     const FONT_DIRS = ['./'];
     const FONT_FILES = {
-      'Ebrima':        ['Ebrima.woff2'],
-      'Calibri Light': ['Calibri Light.woff2'],
-      'Gilroy-Medium': ['Gilroy-Medium.woff2'],
-      'Lyulin Bold':   ['LyuLin Heavy.woff2']
+      'Ebrima':         ['Ebrima.woff2'],
+      'Calibri Light':  ['Calibri Light.woff2'],
+      'Gilroy-Medium':  ['Gilroy-Medium.woff2'],
+      'Lyulin Bold':    ['LyuLin Heavy.woff2'],
+      'Mazin SemiBold': ['Mazin DEMO SemiBold.woff2']
     };
     (function injectWoff2Fonts() {
-      const weights = { 'Ebrima': 400, 'Calibri Light': 300, 'Gilroy-Medium': 500, 'Lyulin Bold': 700 };
+      const weights = { 'Ebrima': 400, 'Calibri Light': 300, 'Gilroy-Medium': 500, 'Lyulin Bold': 700, 'Mazin SemiBold': 600 };
       let css = '';
       Object.entries(FONT_FILES).forEach(([family, names]) => {
         const urls = [];
         FONT_DIRS.forEach(d => names.forEach(n => { const u = d + n; if (!urls.includes(u)) urls.push(u); }));
         const src = [`local('${family}')`].concat(urls.map(u => `url('${encodeURI(u)}') format('woff2')`)).join(', ');
-        css += `@font-face{font-family:'${family}';src:${src};font-weight:${weights[family]};font-display:swap;}\n`;
-        if (family === 'Lyulin Bold') css += `@font-face{font-family:'Lyulin';src:${src};font-weight:700;font-display:swap;}\n`;
-        if (family === 'Gilroy-Medium') css += `@font-face{font-family:'Gilroy Medium';src:${src};font-weight:500;font-display:swap;}\n`;
+        css += `@font-face{font-family:'${family}';src:${src};font-weight:${weights[family]};font-style:normal;font-display:swap;}\n`;
+        if (family === 'Lyulin Bold') css += `@font-face{font-family:'Lyulin';src:${src};font-weight:700;font-style:normal;font-display:swap;}\n`;
+        if (family === 'Gilroy-Medium') css += `@font-face{font-family:'Gilroy Medium';src:${src};font-weight:500;font-style:normal;font-display:swap;}\n`;
       });
       const st = document.createElement('style'); st.id = 'woff2-fonts'; st.textContent = css; document.head.appendChild(st);
     })();
@@ -888,6 +912,24 @@
       return clean ? clean.padStart(3, '0') : '000';
     }
 
+    // Generator No. CIF Bank Permata: format M00 + 2 angka + 2 huruf kapital (contoh: M0084GI)
+    function generateRandomPermataCIF() {
+      const digits = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const l1 = chars[Math.floor(Math.random() * 26)];
+      const l2 = chars[Math.floor(Math.random() * 26)];
+      return `M00${digits}${l1}${l2}`;
+    }
+
+    function regeneratePermataCIF() {
+      pushHistorySnapshot();
+      appState.templatesData.F.mC = generateRandomPermataCIF();
+      renderDynamicForm();
+      renderCanvas();
+      saveStateToStorage();
+      showToast(`No. CIF Permata baru: ${appState.templatesData.F.mC}`, 'success');
+    }
+
     function getDefaultDatesOneMonthAgo() {
       const now = new Date();
       const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -899,6 +941,7 @@
 
       const monthFull = MONTHS_ID_FULL[moIdx];
       const monthShort = MONTHS_ID_SHORT[moIdx];
+      const currMonthFull = MONTHS_ID_FULL[now.getMonth()];
       const currMonthShort = MONTHS_ID_SHORT[now.getMonth()];
 
       return {
@@ -908,7 +951,10 @@
         expC_periode: `1-${lastDay} ${monthFull} ${yr}`,
         expD_periode: `01 ${monthShort} ${yr} - ${pad2(lastDay)} ${monthShort} ${yr}`,
         expD_dicetak: `01 ${currMonthShort} ${now.getFullYear()}`,
-        expE_periode: `1-${lastDay} ${monthFull} ${yr}`
+        expE_periode: `1-${lastDay} ${monthFull} ${yr}`,
+        expF_periode: `01 ${monthFull.toUpperCase()} ${yr} - ${pad2(lastDay)} ${monthFull.toUpperCase()} ${yr}`,
+        expF_tglLaporan: `1 ${currMonthFull.toUpperCase()} ${now.getFullYear()}`,
+        expF_akhirPeriode: `${pad2(lastDay)} ${monthFull} ${yr}`
       };
     }
 
@@ -1003,6 +1049,8 @@
      *     Boleh juga diisi link gambar lengkap (https://...) untuk masing-masing bank.
      *************************************************************************/
     const TEMPLATE_FOLDER_URL = '';
+	
+	const ALL_EXP_KEYS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
     // LINK DEFAULT PER BANK: tempel link gambar template masing-masing bank di sini.
     // Dipakai sebagai gambar bawaan sebelum user mengunggah gambar sendiri / memilih folder.
@@ -1014,7 +1062,8 @@
       B: 'https://marketingexata.github.io/statement/template%20statement/bankB.png',
       C: 'https://marketingexata.github.io/statement/template%20statement/bankC2.jpg',
       D: 'https://marketingexata.github.io/statement/template%20statement/bankD2.jpg',
-      E: 'https://marketingexata.github.io/statement/template%20statement/bankE2.jpg'
+      E: 'https://marketingexata.github.io/statement/template%20statement/bankE2.jpg',
+	  F: 'https://marketingexata.github.io/statement/template%20statement/bankF.jpg'
     };
 
     const TEMPLATE_FILE_NAMES = {
@@ -1022,7 +1071,8 @@
       B: 'Template_Statement_Bank_B_Kosong.png',
       C: 'Template_Statement_Bank_C_Kosong.png',
       D: 'Template_Statement_Bank_D_Kosong.png',
-      E: 'Template_Statement_Bank_E_Kosong.png'
+      E: 'Template_Statement_Bank_E_Kosong.png',
+      F: 'Template_Statement_Bank_F_Kosong.png'
     };
 
     // Ubah link halaman GitHub (tree/blob) menjadi link raw agar gambar bisa dimuat langsung.
@@ -1070,7 +1120,8 @@
       B: 'https://marketingexata.github.io/statement/logo%20bank/bankB.jpg',
       C: 'https://marketingexata.github.io/statement/logo%20bank/bankC.jpg',
       D: 'https://marketingexata.github.io/statement/logo%20bank/bankD.jpg',
-      E: 'https://marketingexata.github.io/statement/logo%20bank/bankE.jpg'
+      E: 'https://marketingexata.github.io/statement/logo%20bank/bankE.jpg',
+	  F: 'https://marketingexata.github.io/statement/logo%20bank/bankF.jpg'
     };
 
     const BANK_LOGO_FALLBACK_STYLES = {
@@ -1078,7 +1129,8 @@
       B: 'bg-sky-500 text-white',
       C: 'bg-lime-500 text-slate-900',
       D: 'bg-blue-500 text-white',
-      E: 'bg-amber-500 text-white'
+      E: 'bg-amber-500 text-white',
+	  F: 'bg-emerald-600 text-white'
     };
 
     function renderBankLogos() {
@@ -1105,7 +1157,8 @@
       B: { w: 2480, h: 1157 },
       C: { w: 2480, h: 770 },
       D: { w: 2479, h: 1393 },
-      E: { w: 2480, h: 1250 }
+      E: { w: 2480, h: 1250 },
+      F: { w: 8512, h: 4770 } // Ukuran preview Bank Permata
     };
     // Ukuran desain awal tampilan template bawaan (HTML) sebelum diskalakan ke ukuran target.
     const BUILTIN_DESIGN_SIZES = {
@@ -1113,7 +1166,8 @@
       B: { w: 900, h: 420 },
       C: { w: 900, h: 330 },
       D: { w: 900, h: 470 },
-      E: { w: 900, h: 454 }
+      E: { w: 900, h: 454 },
+      F: { w: 8512, h: 4770 }
     };
 
     // Skalakan posisi & ukuran semua kotak dari ukuran kanvas lama ke ukuran baru.
@@ -1138,7 +1192,7 @@
     // Pastikan setiap layout punya canvasWidth & ukuran sesuai target (data lama otomatis dimigrasi).
     function normalizeLayouts(layouts) {
       const out = layouts || {};
-      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+      ALL_EXP_KEYS.forEach(exp => {
         const L = out[exp];
         if (!L) return;
         if (!L.canvasWidth) L.canvasWidth = 900;
@@ -1216,6 +1270,20 @@
             mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 688, y: 185, w: 165, h: 23, fontSize: 18, align: 'left', bold: false },
             p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 202, y: 410, w: 95, h: 28, fontSize: 17, align: 'left', bold: false },
             mB: { id: 'mB', badge: 'B • Saldo Bulan Lalu', type: 'manual', x: 737, y: 410, w: 148, h: 28, fontSize: 17, align: 'right', bold: true }
+          }
+        },
+		F: {
+          // Koordinat presisi pada kanvas 8512 x 4770 px sesuai TEMPPER.jpg
+          canvasWidth: 8512,
+          canvasHeight: 4770,
+          boxes: {
+            p5: { id: 'p5', badge: '5 • Nama Pemilik', type: 'auto', x: 166, y: 1823, w: 2150, h: 192, fontSize: 138, align: 'left', bold: true, color: '#000000' },
+            p6: { id: 'p6', badge: '6 • Alamat Lengkap Indonesia', type: 'auto', x: 166, y: 2035, w: 2150, h: 510, fontSize: 118, align: 'left', bold: false, color: '#000000' },
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 4954, y: 1648, w: 2900, h: 216, fontSize: 126, align: 'left', bold: true, color: '#000000' },
+            mB: { id: 'mB', badge: 'B • Tanggal Laporan', type: 'manual', x: 4954, y: 2040, w: 1600, h: 200, fontSize: 124, align: 'left', bold: true, color: '#000000' },
+            mC: { id: 'mC', badge: 'C • No. CIF', type: 'manual', x: 4954, y: 2422, w: 1400, h: 208, fontSize: 124, align: 'left', bold: true, color: '#000000' },
+            mD: { id: 'mD', badge: 'D • Akhir Periode', type: 'manual', x: 6550, y: 3380, w: 1700, h: 225, fontSize: 150, align: 'left', bold: true, color: '#000000' },
+            mE: { id: 'mE', badge: 'E • Nominal Akhir', type: 'manual', x: 6820, y: 3796, w: 1300, h: 195, fontSize: 132, align: 'right', bold: true, color: '#ffffff' }
           }
         }
       };
@@ -1306,6 +1374,17 @@
             p3: 'PEKAYON',
             mA: d.expE_periode,
             mB: '5.850.000,00'
+          },
+		  F: {
+            p3: 'KCP PULOGADUNG TRADE CENTER',
+            p4: '7080507857',
+            p5: 'AGO HARDIANTO PUTRA',
+            p6: 'PLUMBON 03/10\nPLUMBON MOJOLABAN\nSUKOHARJO, WIL. 57554',
+            mA: d.expF_periode,
+            mB: d.expF_tglLaporan,
+            mC: generateRandomPermataCIF(),
+            mD: d.expF_akhirPeriode,
+            mE: '5.850.000,00'
           }
         },
 
@@ -1316,7 +1395,8 @@
           B: { mode: 'github', githubFile: 'Template_Statement_Bank_B_Kosong.png', customDataUrl: '' },
           C: { mode: 'github', githubFile: 'Template_Statement_Bank_C_Kosong.png', customDataUrl: '' },
           D: { mode: 'github', githubFile: 'Template_Statement_Bank_D_Kosong.png', customDataUrl: '' },
-          E: { mode: 'github', githubFile: 'Template_Statement_Bank_E_Kosong.png', customDataUrl: '' }
+          E: { mode: 'github', githubFile: 'Template_Statement_Bank_E_Kosong.png', customDataUrl: '' },
+		  F: { mode: 'github', githubFile: 'Template_Statement_Bank_F_Kosong.png', customDataUrl: '' }
         }
       };
     }
@@ -1419,7 +1499,8 @@
               B: { ...init.templatesData.B, ...(parsed.templatesData?.B || {}) },
               C: { ...init.templatesData.C, ...(parsed.templatesData?.C || {}) },
               D: { ...init.templatesData.D, ...(parsed.templatesData?.D || {}) },
-              E: { ...init.templatesData.E, ...(parsed.templatesData?.E || {}) }
+              E: { ...init.templatesData.E, ...(parsed.templatesData?.E || {}) },
+			  F: { ...init.templatesData.F, ...(parsed.templatesData?.F || {}) }
             },
             layouts: normalizeLayouts(parsed.layouts || init.layouts),
             templateSources: { ...init.templateSources, ...(parsed.templateSources || {}) },
@@ -1427,7 +1508,7 @@
           };
           // Migrasi sekali: data lama yang masih memakai "Vektor Bawaan" dialihkan ke mode otomatis (folder GitHub)
           if (!parsed.githubTemplatesDefault) {
-            ['A', 'B', 'C', 'D', 'E'].forEach(k => {
+            ['A', 'B', 'C', 'D', 'E', 'F'].forEach(k => {
               const src = appState.templateSources[k];
               if (src && src.mode === 'builtin') src.mode = 'github';
             });
@@ -1440,7 +1521,11 @@
           if (!appState.bniLayoutV4) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV4 = true; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
           if (!appState.bniLayoutV2) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
           if (!appState.bsiLayoutV2) { appState.layouts.E = normalizeLayouts({ E: getBaseLayouts().E }).E; appState.bsiLayoutV2 = true; appState.bsiLayoutV3 = true; }
-          if (appState.templatesData.E && appState.templatesData.E.p3 == null) appState.templatesData.E.p3 = '';
+          if (!appState.permataLayoutV1 || !appState.layouts.F) {
+            appState.layouts.F = normalizeLayouts({ F: getBaseLayouts().F }).F;
+            appState.permataLayoutV1 = true;
+          }
+		  if (appState.templatesData.E && appState.templatesData.E.p3 == null) appState.templatesData.E.p3 = '';
           appState.blur = appState.blur || {};
           if (!appState.blurDefaultOff) { Object.values(appState.blur).forEach(c => { c.auto = false; }); appState.blurDefaultOff = true; }
           // BCA: alamat menurun tanpa spasi antar baris (migrasi data lama)
@@ -1719,9 +1804,9 @@
      * Skor = bobot IDF kata (nama kantor, alamat, kota, kecamatan, provinsi) terhadap
      * WhatsApp Poin 2 (alamat) & Poin 3 (kantor cabang) + bonus frasa nama kantor.
      *************************************************************************/
-    const BANK_NAME_TO_EXP = { BCA: 'A', BRI: 'B', BNI: 'C', MANDIRI: 'D', BSI: 'E' };
-    const BANK_DB_FILES = { A: 'database_bank_a.json', B: 'database_bank_b.json', C: 'database_bank_c.json', D: 'database_bank_d.json', E: 'database_bank_e.json' };
-    let bankDbs = { A: [], B: [], C: [], D: [], E: [] };
+    const BANK_NAME_TO_EXP = { BCA: 'A', BRI: 'B', BNI: 'C', MANDIRI: 'D', BSI: 'E', PERMATA: 'F', 'BANK PERMATA': 'F', PERMATABANK: 'F' };
+    const BANK_DB_FILES = { A: 'database_bank_a.json', B: 'database_bank_b.json', C: 'database_bank_c.json', D: 'database_bank_d.json', E: 'database_bank_e.json', F: 'database_bank_f.json' };
+    let bankDbs = { A: [], B: [], C: [], D: [], E: [], F: [] };
     const officeIndexCache = {};
     const officeLast = {};
     const JENIS_KNOWN = ['KCU', 'KC', 'KANCA', 'KCP', 'KK', 'UNIT', 'KANWIL', 'REGIONAL', 'KCI', 'CAPEM'];
@@ -1766,7 +1851,8 @@
           e.kode = pick(r, ['kode', 'kodekantor', 'kodekantorsumber', 'identri', 'idkantor', 'branchcode']);
           e.jenis = canonJenis(pick(r, ['jenis', 'jeniskantor', 'tipe', 'type', 'tipekantor']));
           e.nama = pick(r, ['nama', 'namakantor', 'namacabang', 'namaunit', 'name', 'branchname']);
-          e.alamat = pick(r, ['alamat', 'alamatkantor', 'alamatsumber', 'alamatunit', 'address']);
+          e.alamat = pick(r, ['alamat', 'alamatkantor', 'alamatsumber', 'alamatunit', 'address', 'alamatpembanding']);
+          e.alamatAlt = pick(r, ['alamatpembanding', 'metadatalokasisumber']);
           e.kota = pick(r, ['kota', 'kabupatenkota', 'kabupatenkotasumber', 'kabkota', 'city']);
           e.kec = pick(r, ['kecamatan', 'kecamatandarialamat']);
           e.prov = pick(r, ['provinsi', 'provinsipemetaan', 'provinsisumber']);
@@ -1790,7 +1876,7 @@
       const kcByKota = new Map(), kwByProv = new Map(), kwAll = [];
       entries.forEach((e, n) => {
         e.nameTokens = new Set(officeTokens(e.core));
-        e.allTokens = new Set([...e.nameTokens, ...officeTokens([e.alamat, e.kota, e.kec, e.prov].join(' '))]);
+        e.allTokens = new Set([...e.nameTokens, ...officeTokens([e.alamat, e.alamatAlt, e.kota, e.kec, e.prov].join(' '))]);
         if (!e.legacy) e.allTokens.forEach(t => { if (!inv.has(t)) inv.set(t, []); inv.get(t).push(n); });
         if (e.jenis === 'KC') { const k = kotaKey(e); if (!kcByKota.has(k)) kcByKota.set(k, []); kcByKota.get(k).push(e); }
         if (e.jenis === 'KANWIL') { kwAll.push(e); const k = (e.prov || '').toLowerCase(); if (!kwByProv.has(k)) kwByProv.set(k, []); kwByProv.get(k).push(e); }
@@ -1814,14 +1900,16 @@
       if (!e) return '';
       exp = exp || officeLabel.exp || '';
       const J = (e.jenis || '').toUpperCase();
-      const n = stripBankPrefix(e.nama);
+      const n = stripBankPrefix(e.nama).replace(/^PERMATA\s*BANK\s+/i, '').trim();
       if (exp === 'B') {
         const core = officeCore(e.nama);
         return J === 'KC' ? `KC ${core}` : J === 'UNIT' ? `UNIT ${core}` : n;
       }
-      if (J === 'OUTLET' && exp === 'C') {
-        const m = String(appState.parsed.kantorCabangRaw || '').toUpperCase().match(/^(KCU|KCP|KC|KK)\b/);
-        return `${m ? m[1] : 'KCP'} ${n}`;
+      if ((J === 'OUTLET' || J === 'OUTLET SYARIAH') && (exp === 'C' || exp === 'F')) {
+        const rawHint = `${appState.parsed.kantorCabangRaw || ''} ${appState.parsed.alamatUnitRaw || ''}`.toUpperCase();
+        const m = rawHint.match(/\b(KCU|KCP|KC|KK)\b/);
+        const prefix = m ? m[1] : 'KCP';
+        return /^(KCU|KCP|KC|KK)\b/i.test(n) ? n : `${prefix} ${n}`;
       }
       if (!J || J === 'OUTLET' || J === 'KANWIL') return n;
       if (/^(KCU|KCP|KC|KK|KFO|KFF|KF|MBU|BCA EXPRESS|KANTOR CABANG)\b/.test(n)) return n;
@@ -1836,7 +1924,12 @@
     function computeOfficeMatch(exp) {
       const idx = getOfficeIndex(exp);
       const p = appState.parsed;
-      const t2 = normText(p.alamatUnitRaw), t3 = normText(p.kantorCabangRaw);
+      const rawLinesForOffice = String(appState.rawWhatsapp || '')
+        .split(/\r?\n/)
+        .filter(l => !/^\s*[*_~]*\s*[456]\s*[\.\):]/.test(l) && !/alamat\s*lengkap|nama\s*pengguna|no\.?\s*rek/i.test(l))
+        .join(' ');
+      const t2 = normText(p.alamatUnitRaw + ' ' + rawLinesForOffice);
+      const t3 = normText(p.kantorCabangRaw);
       const res = { exp, total: idx.entries.length, candidates: [], main: null, unit: null, kc: null, kw: null, kcList: [], kwList: [], ambiguous: false, legacy: null };
       const choice = appState.officeChoice || {};
 
@@ -1849,6 +1942,7 @@
         e.keyword.toLowerCase().split(/[,;]/).map(x => x.trim()).filter(Boolean).forEach(kw => { if (raw2.includes(kw)) sc += kw.length * 3; });
         if (sc > bestLegacy) { bestLegacy = sc; res.legacy = e; }
       });
+	  
 
       // 2) Skor kata (IDF) + bonus frasa nama kantor
       const T2 = new Set(officeTokens(p.alamatUnitRaw)), T3 = new Set(officeTokens(p.kantorCabangRaw));
@@ -1924,27 +2018,31 @@
 
     function syncOfficeMatches() {
       const p = appState.parsed;
-      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(exp => {
         const r = computeOfficeMatch(exp);
         officeLast[exp] = r;
         const t = appState.templatesData[exp];
+        if (!t) return;
         if (exp === 'B') {
           const cabUpper = (p.kantorCabangRaw || '').toUpperCase();
-          if (r.unit) t.p3 = officeLabel(r.unit, 'B'); else if (!t.p3 || r.total > 0) t.p3 = cabUpper.startsWith('UNIT ') ? cabUpper : `UNIT ${cabUpper}`;
+          if (r.unit) t.p3 = officeLabel(r.unit, 'B');
+          else if (r.main) t.p3 = officeLabel(r.main, 'B');
+          else if (!t.p3 || r.total > 0) t.p3 = cabUpper.startsWith('UNIT ') ? cabUpper : `UNIT ${cabUpper}`;
           if (r.legacy) t.p2 = r.legacy.nama;
           else {
             const parts = [r.kc ? officeLabel(r.kc, 'B') : '', r.kw ? kanwilLabel(r.kw, 'B') : ''].filter(Boolean);
             t.p2 = parts.length ? parts.join(' / ') : ((p.alamatUnitRaw || '').toUpperCase() || t.p2);
           }
-          t.pUnit = r.unit ? r.unit.alamat : '';
+          t.pUnit = r.unit ? r.unit.alamat : (r.main ? r.main.alamat : '');
           t.pKanwil = r.kw ? kanwilLabel(r.kw, 'B') : '';
         } else if (r.main) {
-          t.p3 = exp === 'E' ? officeNameOnly(officeLabel(r.main, exp)) : officeLabel(r.main, exp);
-          t.pUnit = officeLabel(r.main, exp);
-          t.p2 = (r.main.alamat || '').toUpperCase();
+          const lbl = officeLabel(r.main, exp);
+          t.p3 = exp === 'E' ? officeNameOnly(lbl) : (exp === 'A' ? lbl.toUpperCase() : lbl);
+          t.pUnit = lbl;
+          t.p2 = [r.main.alamat, r.main.kec ? `KEC. ${r.main.kec}` : '', r.main.kota, r.main.pos].filter(Boolean).join(', ').toUpperCase();
           t.pKanwil = r.kw ? kanwilLabel(r.kw, exp) : '';
         } else if (r.total > 0) {
-          t.pUnit = ''; t.p2 = ''; t.pKanwil = '';
+          t.pUnit = ''; t.p2 = (p.alamatUnitRaw || '').toUpperCase(); t.pKanwil = '';
         }
       });
     }
@@ -2007,8 +2105,12 @@
 
     const slimOffice = e => { const o = { kode: e.kode, jenis: e.jenis, nama: e.nama, alamat: e.alamat, kota: e.kota, kecamatan: e.kec, provinsi: e.prov, kodepos: e.pos }; Object.keys(o).forEach(k => { if (!o[k]) delete o[k]; }); return o; };
 
-    const OFFICE_CSV_NAME = 'Alamat_BRI_BCA_BNI_Mandiri_BSI_Indonesia.csv';
-    const OFFICE_CSV_URLS = ['./' + OFFICE_CSV_NAME, 'https://marketingexata.github.io/statement/' + OFFICE_CSV_NAME];
+    const OFFICE_CSV_NAME = 'Alamat_BRI_BCA_BNI_Mandiri_BSI_Permata_Indonesia.csv';
+    const OFFICE_CSV_URLS = [
+      './' + OFFICE_CSV_NAME,
+      'https://raw.githubusercontent.com/marketingexata/statement/main/' + OFFICE_CSV_NAME,
+      'https://marketingexata.github.io/statement/' + OFFICE_CSV_NAME
+    ];
     const officeCsvStatus = { state: 'idle', total: 0, src: '' };
 
     // Masukkan baris gabungan (kolom "bank") ke database tiap bank. Mengembalikan jumlah kantor.
@@ -2076,7 +2178,7 @@
     async function tryFetchOtherBankDatabases() {
       if (await loadOfficeCsv(false)) return;
       let n = 0;
-      for (const exp of ['A', 'B', 'C', 'D', 'E']) {
+      for (const exp of ['A', 'B', 'C', 'D', 'E', 'F']) {
         try {
           const res = await fetch('./' + BANK_DB_FILES[exp], { cache: 'no-store' });
           if (!res.ok) continue;
@@ -2108,12 +2210,21 @@
         return join([kec, rtrw, desa, join([kab, pos], ' '), 'INDONESIA'], '\n');
       }
       if (exp === 'B') {
-        // FIX: sebelumnya memakai ${kab} dua kali -> "SUKOHARJO MOJOLABAN, SUKOHARJO". Seharusnya Desa + Kecamatan, lalu Kab/Kota.
         const rtrw = (rt || rw) ? `Rt.${rt}/${rw}` : '';
         return join([dusun, rtrw, join([desa, kec], ' '), kab], ', ');
       }
       if (exp === 'C' || exp === 'E') {
         return join([join([desa, rt, rw], ' '), join([desa, kec, kab], ' '), prov], ', ');
+      }
+      if (exp === 'F') {
+        // Format 3 baris sesuai TEMPPER.jpg (Contoh: JL.MAWAR MERAH 2 05/01 \n 61 PONDOK KOPI DUREN SAWIT \n JAKARTA TIMUR, WIL. 13460)
+        const rt2 = c.rt ? pad2(parseInt(c.rt, 10) || 0) : '';
+        const rw2 = c.rw ? pad2(parseInt(c.rw, 10) || 0) : '';
+        const rtrwShort = (rt2 || rw2) ? `${rt2}/${rw2}` : '';
+        const line1 = join([dusun, rtrwShort], ' ');
+        const line2 = join([desa !== dusun ? desa : '', kec], ' ') || join([desa, kec], ' ');
+        const line3 = join([kab, pos ? `WIL. ${pos}` : ''], ', ');
+        return join([line1, line2, line3], '\n');
       }
       return '';
     }
@@ -2156,6 +2267,11 @@
       appState.templatesData.E.p4 = akun;
       appState.templatesData.E.p5 = namaUpper;
       appState.templatesData.E.p3 = officeNameOnly(p.kantorCabangRaw);
+	  
+      appState.templatesData.F.p3 = withKcpPrefix(cabUpper);
+      appState.templatesData.F.p4 = akun;
+      appState.templatesData.F.p5 = namaUpper;
+      appState.templatesData.F.p6 = formatAddressForTemplate('F', c);
 
       syncOfficeMatches(); // timpa p3/p2/pUnit dengan hasil pencocokan database bila ada
     }
@@ -2179,7 +2295,7 @@
     }
 
     function rebuildFormattedAddressForCurrentTemplate(notify = false) {
-      ['A', 'B', 'C', 'E'].forEach(exp => {
+      ['A', 'B', 'C', 'E', 'F'].forEach(exp => {
         appState.templatesData[exp].p6 = formatAddressForTemplate(exp, appState.addrComponents);
       });
       renderDynamicForm();
@@ -2244,6 +2360,9 @@
       } else if (exp === 'E') {
         const nominal = randStep(550000, 25000000, 25000);
         appState.templatesData.E.mB = formatIDRNumber(nominal);
+	  } else if (exp === 'F') {
+        const nominal = randStep(500000, 25000000, 25000);
+        appState.templatesData.F.mE = formatIDRNumber(nominal);
       }
 
       renderDynamicForm();
@@ -2257,11 +2376,12 @@
       B: { name: 'BRI', fontLabel: 'Font: Arial Bold' },
       C: { name: 'BNI', fontLabel: 'Font: Calibri' },
       D: { name: 'MANDIRI', fontLabel: 'Font: Montserrat' },
-      E: { name: 'BSI', fontLabel: 'Font: Times New Roman' }
+      E: { name: 'BSI', fontLabel: 'Font: Times New Roman' },
+      F: { name: 'PERMATA', fontLabel: 'Font: Mazin SemiBold' }
     };
 
     function selectExpedition(exp) {
-      if (!['A', 'B', 'C', 'D', 'E'].includes(exp)) return;
+      if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(exp)) return;
       appState.activeExpedition = exp;
       appState.selectedBoxId = null;
       updateActiveExpeditionTabs();
@@ -2273,7 +2393,7 @@
 
     function updateActiveExpeditionTabs() {
       const active = appState.activeExpedition;
-      ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(letter => {
         const btn = document.getElementById(`tab-exp-${letter}`);
         if (!btn) return;
         if (letter === active) {
@@ -2567,6 +2687,63 @@
             <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('E','mB',this.value)" class="w-full px-3 py-2 rounded-xl border border-amber-400 bg-amber-50/30 text-xs font-mono font-bold" />
           </div>
         `;
+      } else if (exp === 'F') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">5</span> Nama Pemilik Rekening (Kapital & Bold)
+              </label>
+              <input type="text" value="${escapeHtml(data.p5)}" oninput="updateTemplateFieldValue('F','p5',this.value.toUpperCase())" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold uppercase" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">C</span> No. CIF (M00 + 2 Angka + 2 Huruf)</span>
+                <button type="button" onclick="regeneratePermataCIF()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                  <i data-lucide="dices" class="w-3.5 h-3.5"></i> Acak CIF
+                </button>
+              </label>
+              <input type="text" value="${escapeHtml(data.mC)}" oninput="updateTemplateFieldValue('F','mC',this.value.toUpperCase())" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-mono font-bold uppercase" />
+            </div>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">6</span> Alamat Lengkap Indonesia (Kapital, Tidak Bold)</span>
+            </label>
+            <textarea rows="3" oninput="updateTemplateFieldValue('F','p6',this.value.toUpperCase())" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono uppercase leading-snug">${escapeHtml(data.p6)}</textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Periode Laporan (Kapital & Bold)
+              </label>
+              <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('F','mA',this.value.toUpperCase())" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-bold uppercase" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">B</span> Tanggal Laporan (Tgl 1 Bulan Ini)
+              </label>
+              <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('F','mB',this.value.toUpperCase())" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-bold uppercase" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">D</span> Akhir Periode (Bold, Huruf Awal Kapital)
+              </label>
+              <input type="text" value="${escapeHtml(data.mD)}" oninput="updateTemplateFieldValue('F','mD',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-bold" />
+            </div>
+            <div>
+              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                <span><span class="px-1.5 py-0.5 rounded bg-blue-600 text-white mr-1">E</span> Nominal Akhir (≥ 500.000, Putih & Bold)</span>
+                <button type="button" onclick="generateRandomFinancials('F')" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                  <i data-lucide="dices" class="w-3.5 h-3.5"></i> Isi Random
+                </button>
+              </label>
+              <input type="text" value="${escapeHtml(data.mE)}" oninput="updateTemplateFieldValue('F','mE',this.value)" class="w-full px-3 py-2 rounded-xl border border-indigo-400 bg-indigo-50/30 text-xs font-mono font-bold" />
+            </div>
+          </div>
+        `;
       }
 
       if (window.lucide) lucide.createIcons();
@@ -2723,6 +2900,28 @@
           </div>
         `;
       }
+	  if (exp === 'F') {
+        return `
+          <div class="w-full h-full bg-[#f3f8fd] font-bank-F text-slate-900 relative overflow-hidden" style="font-size:115px;">
+            <div class="absolute bg-white" style="left:158px;top:1636px;width:3120px;height:1140px;"></div>
+            <div class="absolute bg-white" style="left:3474px;top:1636px;width:4720px;height:1140px;"></div>
+            <div class="absolute text-slate-500" style="left:166px;top:1645px;font-size:110px;font-weight:500;">Kepada Yth</div>
+            <div class="absolute text-slate-900" style="left:3558px;top:1648px;font-size:120px;font-weight:500;">Periode Laporan</div>
+            <div class="absolute italic text-slate-500" style="left:3558px;top:1805px;font-size:112px;font-weight:400;">Statement Period</div>
+            <div class="absolute text-slate-900" style="left:3558px;top:2040px;font-size:120px;font-weight:500;">Tanggal Laporan</div>
+            <div class="absolute italic text-slate-500" style="left:3558px;top:2195px;font-size:112px;font-weight:400;">Statement Date</div>
+            <div class="absolute text-slate-900" style="left:3558px;top:2422px;font-size:120px;font-weight:500;">No.CIF</div>
+            <div class="absolute italic text-slate-500" style="left:3558px;top:2575px;font-size:112px;font-weight:400;">CIF No.</div>
+            <div class="absolute font-bold text-slate-900" style="left:166px;top:3380px;font-size:150px;">Ringkasan Rekening</div>
+            <div class="absolute font-bold text-slate-900" style="left:4470px;top:3380px;font-size:150px;">Ekuivalen Saldo Rupiah –</div>
+            <div class="absolute bg-[#0066ff] flex items-center justify-between px-[120px]" style="left:166px;top:3685px;width:8046px;height:433px;">
+              <span class="text-white font-bold" style="font-size:132px;">Rekening Simpanan</span>
+              <span class="text-white font-bold" style="font-size:132px;margin-right:1750px;">Total</span>
+            </div>
+            <div class="absolute bg-[#d9ebff]" style="left:166px;top:4118px;width:8046px;height:640px;"></div>
+          </div>
+        `;
+      }
       return '';
     }
 
@@ -2860,10 +3059,10 @@
     }
 
     function getCurrentCanvasScale() {
-      const container = document.getElementById('previewScaleContainer');
-      if (!container) return 1;
+      const canvasEl = document.getElementById('statementCanvas');
+      if (!canvasEl) return 1;
       const lw = (appState.layouts[appState.activeExpedition] || {}).canvasWidth || 900;
-      return container.getBoundingClientRect().width / lw;
+      return canvasEl.getBoundingClientRect().width / lw;
     }
 
     function startBoxInteraction(e, boxId) {
@@ -2903,14 +3102,19 @@
       window.addEventListener('touchmove', onBoxInteractionMove, { passive: false });
       window.addEventListener('touchend', onBoxInteractionEnd);
     }
+	
+	const DRAG_SMOOTH_FACTOR = 0.65;
 
     function onBoxInteractionMove(e) {
       if (!interactionState) return;
+      if (e.touches && e.touches.length > 1) return; // Abaikan drag jika sedang pinch 2 jari
       if (e.cancelable) e.preventDefault();
 
       const pt = getClientXY(e);
-      const dx = (pt.x - interactionState.startX) / interactionState.scale;
-      const dy = (pt.y - interactionState.startY) / interactionState.scale;
+      const rawDx = (pt.x - interactionState.startX) / interactionState.scale;
+      const rawDy = (pt.y - interactionState.startY) / interactionState.scale;
+      const dx = rawDx * DRAG_SMOOTH_FACTOR;
+      const dy = rawDy * DRAG_SMOOTH_FACTOR;
 
       const exp = appState.activeExpedition;
       const layout = appState.layouts[exp];
@@ -2922,14 +3126,16 @@
       if (snapLineX) snapLineX.style.display = 'none';
       if (snapLineY) snapLineY.style.display = 'none';
 
+      const roundHalf = v => Math.round(v * 2) / 2;
+
       if (interactionState.mode === 'drag') {
-        let newX = Math.round(interactionState.origX + dx);
-        let newY = Math.round(interactionState.origY + dy);
+        let newX = roundHalf(interactionState.origX + dx);
+        let newY = roundHalf(interactionState.origY + dy);
         newX = Math.max(0, Math.min((layout.canvasWidth || 900) - box.w, newX));
         newY = Math.max(0, Math.min(layout.canvasHeight - box.h, newY));
 
         if (appState.snapEnabled) {
-          const SNAP_THRESHOLD = 5;
+          const SNAP_THRESHOLD = 2; // Lebih lembut agar tidak menyentak
           Object.values(layout.boxes).forEach(other => {
             if (other.id === box.id) return;
             if (Math.abs(newX - other.x) <= SNAP_THRESHOLD) {
@@ -2951,15 +3157,15 @@
         let newW = interactionState.origW;
         let newH = interactionState.origH;
 
-        if (dir.includes('e')) newW = Math.max(40, Math.round(interactionState.origW + dx));
-        if (dir.includes('s')) newH = Math.max(18, Math.round(interactionState.origH + dy));
+        if (dir.includes('e')) newW = Math.max(40, roundHalf(interactionState.origW + dx));
+        if (dir.includes('s')) newH = Math.max(18, roundHalf(interactionState.origH + dy));
         if (dir.includes('w')) {
-          const possibleW = Math.round(interactionState.origW - dx);
-          if (possibleW >= 40) { newW = possibleW; newX = Math.round(interactionState.origX + dx); }
+          const possibleW = roundHalf(interactionState.origW - dx);
+          if (possibleW >= 40) { newW = possibleW; newX = roundHalf(interactionState.origX + dx); }
         }
         if (dir.includes('n')) {
-          const possibleH = Math.round(interactionState.origH - dy);
-          if (possibleH >= 18) { newH = possibleH; newY = Math.round(interactionState.origY + dy); }
+          const possibleH = roundHalf(interactionState.origH - dy);
+          if (possibleH >= 18) { newH = possibleH; newY = roundHalf(interactionState.origY + dy); }
         }
         box.x = newX; box.y = newY; box.w = newW; box.h = newH;
       }
@@ -2998,16 +3204,16 @@
      * FONT, TEKS TAMBAHAN, SHAPE, BLUR
      *************************************************************************/
     const FONT_OPTIONS = {
-      'montserrat':    { label: 'Montserrat',    css: "'Montserrat', sans-serif", weight: 400 },
-      'ebrima':        { label: 'Ebrima',        css: "'Ebrima', 'Nirmala UI', 'Noto Sans', sans-serif", weight: 400 },
-      'arial':         { label: 'Arial',         css: "Arial, 'Liberation Sans', Helvetica, sans-serif", weight: 400 },
-      'gilroy-medium': { label: 'Gilroy-Medium', css: "'Gilroy-Medium', 'Gilroy Medium', 'Gilroy', 'Plus Jakarta Sans', sans-serif", weight: 500 },
-      'times':         { label: 'Times New Roman', css: "'Times New Roman', Times, 'Liberation Serif', serif", weight: 400 },
-      'lyulin-bold':   { label: 'Lyulin Bold',   css: "'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif", weight: 700 },
-      'calibri-light': { label: 'Calibri Light', css: "'Calibri Light', 'Calibri', 'Carlito', 'Segoe UI', sans-serif", weight: 300 }
+      'montserrat':     { label: 'Montserrat',      css: "'Montserrat', sans-serif", weight: 400 },
+      'ebrima':         { label: 'Ebrima',          css: "'Ebrima', 'Nirmala UI', 'Noto Sans', sans-serif", weight: 400 },
+      'arial':          { label: 'Arial',           css: "Arial, 'Liberation Sans', Helvetica, sans-serif", weight: 400 },
+      'gilroy-medium':  { label: 'Gilroy-Medium',   css: "'Gilroy-Medium', 'Gilroy Medium', 'Gilroy', 'Plus Jakarta Sans', sans-serif", weight: 500 },
+      'times':          { label: 'Times New Roman', css: "'Times New Roman', Times, 'Liberation Serif', serif", weight: 400 },
+      'lyulin-bold':    { label: 'Lyulin Bold',     css: "'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif", weight: 700 },
+      'calibri-light':  { label: 'Calibri Light',   css: "'Calibri Light', 'Calibri', 'Carlito', 'Segoe UI', sans-serif", weight: 300 },
+      'mazin-semibold': { label: 'Mazin SemiBold',  css: "'Mazin SemiBold', 'Montserrat', sans-serif", weight: 600 }
     };
-    // Font bawaan preview per bank: BCA Montserrat, BRI Ebrima, BNI Arial, Mandiri Gilroy-Medium, BSI Calibri Light
-    const EXP_FONT = { A: 'lyulin-bold', B: 'ebrima', C: 'arial', D: 'montserrat', E: 'times' };
+    const EXP_FONT = { A: 'lyulin-bold', B: 'ebrima', C: 'arial', D: 'montserrat', E: 'times', F: 'mazin-semibold' };
 
     function getBoxFont(exp, box) {
       const def = FONT_OPTIONS[(box && box.fontKey) || EXP_FONT[exp]] || FONT_OPTIONS[EXP_FONT[exp]];
@@ -3015,7 +3221,10 @@
     }
     // Teks otomatis KAPITAL: BCA semua kotak, Mandiri hanya kotak Nama (5).
     function isUpperBox(exp, box) {
-      return exp === 'A' || (exp === 'D' && box && box.id === 'p5');
+      if (exp === 'A') return true;
+      if (exp === 'D' && box && box.id === 'p5') return true;
+      if (exp === 'F' && box && ['p5', 'p6', 'mA', 'mB', 'mC'].includes(box.id)) return true;
+      return false;
     }
     function getDisplayText(exp, box) {
       const t = getBoxText(exp, box);
@@ -3263,6 +3472,19 @@
       showToast(`Posisi kotak Bank ${exp} dikembalikan ke default presisi!`, 'success');
     }
 
+    let userZoomMultiplier = 1; // 1 = 100% ukuran fit layar (bisa di-zoom 0.5x s/d 4x)
+
+    function setPreviewZoom(mult) {
+      userZoomMultiplier = Math.max(0.5, Math.min(4, Math.round(mult * 100) / 100));
+      updateCanvasResponsiveScale();
+    }
+    function stepPreviewZoom(delta) {
+      setPreviewZoom(userZoomMultiplier + delta);
+    }
+    function resetPreviewZoom() {
+      setPreviewZoom(1);
+    }
+
     function updateCanvasResponsiveScale() {
       const outer = document.getElementById('previewOuterWrapper');
       const scaleContainer = document.getElementById('previewScaleContainer');
@@ -3274,17 +3496,66 @@
       const activeLayout = appState.layouts[appState.activeExpedition] || {};
       const logicalWidth = activeLayout.canvasWidth || 900;
       const logicalHeight = activeLayout.canvasHeight || 410;
-      let scale = Math.min(1, Math.max(0.05, availableWidth / logicalWidth));
-      // Layar HP/tablet: preview yang menempel di atas dibuat ringkas (tinggi dibatasi)
+      let baseScale = Math.min(1, Math.max(0.05, availableWidth / logicalWidth));
       if (window.matchMedia('(max-width: 1279px)').matches) {
-        const maxPreviewH = window.innerWidth < 640 ? 130 : 180;
-        scale = Math.min(scale, maxPreviewH / logicalHeight);
+        const maxPreviewH = window.innerWidth < 640 ? 155 : 210;
+        baseScale = Math.min(baseScale, maxPreviewH / logicalHeight);
       }
 
-      scaleContainer.style.transform = `scale(${scale})`;
-      scaleContainer.style.height = `${Math.round(logicalHeight * scale)}px`;
-      if (indicator) indicator.textContent = `Skala: ${Math.round(scale * 100)}%`;
+      const finalScale = baseScale * userZoomMultiplier;
+      scaleContainer.style.transformOrigin = 'top left';
+      scaleContainer.style.transform = `scale(${finalScale})`;
+      scaleContainer.style.width = `${Math.round(logicalWidth * finalScale)}px`;
+      scaleContainer.style.height = `${Math.round(logicalHeight * finalScale)}px`;
+      outer.style.overflow = userZoomMultiplier > 1 ? 'auto' : 'hidden';
+
+      if (indicator) {
+        indicator.textContent = `Zoom: ${Math.round(userZoomMultiplier * 100)}% (Skala ${Math.round(finalScale * 100)}%)`;
+      }
     }
+
+    // Event Zoom: Scroll Mouse di Desktop & Pinch 2 Jari di HP
+    (function initPreviewZoomInteractions() {
+      window.addEventListener('DOMContentLoaded', () => {
+        const viewport = document.getElementById('previewViewport');
+        if (!viewport) return;
+
+        // 1. Scroll Mouse di Desktop pada area preview
+        viewport.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 0.08 : -0.08;
+          setPreviewZoom(userZoomMultiplier + delta);
+        }, { passive: false });
+
+        // 2. Pinch 2 Jari di Layar Handphone
+        let pinchStartDist = 0;
+        let pinchStartZoom = 1;
+        viewport.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 2) {
+            if (interactionState) onBoxInteractionEnd();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            pinchStartDist = Math.hypot(dx, dy);
+            pinchStartZoom = userZoomMultiplier;
+          }
+        }, { passive: true });
+
+        viewport.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 2 && pinchStartDist > 10) {
+            if (e.cancelable) e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            const ratio = dist / pinchStartDist;
+            setPreviewZoom(pinchStartZoom * ratio);
+          }
+        }, { passive: false });
+
+        viewport.addEventListener('touchend', (e) => {
+          if (e.touches.length < 2) pinchStartDist = 0;
+        });
+      });
+    })();
 
     /*************************************************************************
      * EKSPOR PRESISI TEKS: html2canvas menggambar teks sekitar 5-8px lebih rendah
@@ -3457,8 +3728,13 @@
           showToast(`PNG berhasil diunduh!`, 'success');
         } else {
           const { jsPDF } = window.jspdf;
-          // Ukuran fisik = piksel / 300 DPI; diletakkan di paling atas halaman A4 (rata tengah horizontal).
-          const wMM = capturedCanvas.width / 300 * 25.4, hMM = capturedCanvas.height / 300 * 25.4;
+          let wMM = capturedCanvas.width / 300 * 25.4;
+          let hMM = capturedCanvas.height / 300 * 25.4;
+          if (wMM > 210) {
+            const fitA4 = 210 / wMM;
+            wMM = 210;
+            hMM = hMM * fitA4;
+          }
           const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [210, Math.max(297, hMM)] });
           pdf.addImage(imgData, 'PNG', Math.max(0, (210 - wMM) / 2), 0, wMM, hMM, undefined, 'FAST');
           pdf.save(`${filenameBase}_A4.pdf`);
@@ -3618,7 +3894,7 @@
     function renderTemplateAssetConfigList() {
       const listEl = document.getElementById('templateAssetConfigList');
       if (!listEl) return;
-      listEl.innerHTML = ['A', 'B', 'C', 'D', 'E'].map(exp => {
+      listEl.innerHTML = ['A', 'B', 'C', 'D', 'E', 'F'].map(exp => {
         const cfg = appState.templateSources[exp] || { mode: 'github' };
         const resolvedUrl = resolveTemplateImageUrl(exp);
         return `
@@ -3642,7 +3918,7 @@
       }).join('');
 
       // Cek apakah tiap gambar benar-benar ditemukan di folder
-      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(exp => {
         const statusEl = document.getElementById(`tplStatus-${exp}`);
         const url = resolveTemplateImageUrl(exp);
         if (!statusEl || !url) return;
@@ -3847,7 +4123,7 @@
 
     function captureCurrentPresetData() {
       const bgAdjust = {};
-      ['A', 'B', 'C', 'D', 'E'].forEach(exp => { bgAdjust[exp] = { ...getBgAdjust(exp) }; });
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(exp => { bgAdjust[exp] = { ...getBgAdjust(exp) }; });
       return {
         layouts: JSON.parse(JSON.stringify(appState.layouts)),
         bgAdjust,
@@ -3928,7 +4204,7 @@
       pushHistorySnapshot();
       if (d.layouts) appState.layouts = normalizeLayouts(JSON.parse(JSON.stringify(d.layouts)));
       appState.bgAdjust = {};
-      ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(exp => {
         appState.bgAdjust[exp] = { ...(d.bgAdjust && d.bgAdjust[exp] ? d.bgAdjust[exp] : {}) };
         getBgAdjust(exp); // lengkapi nilai default bila ada yang kosong
       });
@@ -3938,7 +4214,7 @@
       if (snapBtn) snapBtn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.snapEnabled ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
       const guideBtn = document.getElementById('btnToggleGuides');
       if (guideBtn) guideBtn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.showGuides ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
-      selectExpedition(['A', 'B', 'C', 'D', 'E'].includes(d.activeExpedition) ? d.activeExpedition : appState.activeExpedition);
+      selectExpedition(['A', 'B', 'C', 'D', 'E', 'F'].includes(d.activeExpedition) ? d.activeExpedition : appState.activeExpedition);
       setPreviewGuidesActive(true);
       showToast(`Preset "${p.name}" dimuat`, 'success');
     }
@@ -3970,7 +4246,6 @@
     window.addEventListener('keydown', e => {
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (!window.matchMedia('(min-width: 1280px)').matches) return; // hanya layar desktop
       if (!previewGuidesActive || !appState.selectedBoxId) return;
 
       const ae = document.activeElement;
@@ -3985,22 +4260,30 @@
 
       e.preventDefault();
 
-      const scale = Math.max(0.05, getCurrentCanvasScale());
-      const base = Math.max(1, Math.round(1 / scale)); // 1 piksel layar dalam satuan kanvas
-      const step = e.shiftKey ? base * 10 : base;
-      const maxX = (layout.canvasWidth || 900) - box.w;
+      // Langkah sangat halus: 0.5px untuk kanvas standar (~2480px), 2px untuk kanvas 8512px. Shift = 5x.
+      const cw = layout.canvasWidth || 900;
+      const baseStep = cw > 4000 ? 2 : 0.5;
+      const step = e.shiftKey ? baseStep * 5 : baseStep;
+      const maxX = cw - box.w;
       const maxY = layout.canvasHeight - box.h;
 
       const now = Date.now();
-      if (now - lastArrowMoveTs > 800) pushHistorySnapshot(); // satu rangkaian tekanan = satu langkah undo
+      if (now - lastArrowMoveTs > 800) pushHistorySnapshot();
       lastArrowMoveTs = now;
 
-      if (e.key === 'ArrowLeft') box.x = Math.max(0, box.x - step);
-      if (e.key === 'ArrowRight') box.x = Math.min(maxX, box.x + step);
-      if (e.key === 'ArrowUp') box.y = Math.max(0, box.y - step);
-      if (e.key === 'ArrowDown') box.y = Math.min(maxY, box.y + step);
+      if (e.key === 'ArrowLeft') box.x = Math.max(0, Math.round((box.x - step) * 2) / 2);
+      if (e.key === 'ArrowRight') box.x = Math.min(maxX, Math.round((box.x + step) * 2) / 2);
+      if (e.key === 'ArrowUp') box.y = Math.max(0, Math.round((box.y - step) * 2) / 2);
+      if (e.key === 'ArrowDown') box.y = Math.min(maxY, Math.round((box.y + step) * 2) / 2);
 
-      renderCanvas();
+      // Update langsung posisi elemen di DOM agar gerakan 60fps super smooth tanpa kedip
+      const domBox = document.querySelector(`.canvas-field-box[data-box-id="${box.id}"]`);
+      if (domBox) {
+        domBox.style.left = `${box.x}px`;
+        domBox.style.top = `${box.y}px`;
+      } else {
+        renderCanvas();
+      }
       clearTimeout(arrowSaveTimer);
       arrowSaveTimer = setTimeout(saveStateToStorage, 300);
     });
