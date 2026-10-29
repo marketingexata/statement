@@ -1675,128 +1675,230 @@
       }
     }
 
+    const DAFTAR_PROVINSI_ID = [
+      'ACEH', 'SUMATERA UTARA', 'SUMATERA BARAT', 'RIAU', 'KEPULAUAN RIAU', 'JAMBI',
+      'SUMATERA SELATAN', 'BENGKULU', 'LAMPUNG', 'KEPULAUAN BANGKA BELITUNG', 'BANGKA BELITUNG',
+      'DKI JAKARTA', 'JAKARTA', 'JAWA BARAT', 'BANTEN', 'JAWA TENGAH', 'DI YOGYAKARTA',
+      'YOGYAKARTA', 'JAWA TIMUR', 'BALI', 'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR',
+      'KALIMANTAN BARAT', 'KALIMANTAN TENGAH', 'KALIMANTAN SELATAN', 'KALIMANTAN TIMUR',
+      'KALIMANTAN UTARA', 'SULAWESI UTARA', 'GORONTALO', 'SULAWESI TENGAH', 'SULAWESI BARAT',
+      'SULAWESI SELATAN', 'SULAWESI TENGGARA', 'MALUKU', 'MALUKU UTARA', 'PAPUA',
+      'PAPUA BARAT', 'PAPUA BARAT DAYA', 'PAPUA TENGAH', 'PAPUA PEGUNUNGAN', 'PAPUA SELATAN'
+    ];
+
+    // Hitung kemiripan kata sederhana untuk koreksi typo (misal: "SUNGAI PAGI" -> "SUNGAI PAGU")
+    function isSimilarRegionName(a, b) {
+      const s1 = String(a || '').toUpperCase().replace(/[^A-Z]/g, '');
+      const s2 = String(b || '').toUpperCase().replace(/[^A-Z]/g, '');
+      if (!s1 || !s2) return false;
+      if (s1 === s2 || s1.includes(s2) || s2.includes(s1)) return true;
+      if (Math.abs(s1.length - s2.length) > 2) return false;
+      let diff = 0;
+      for (let i = 0; i < Math.max(s1.length, s2.length); i++) {
+        if (s1[i] !== s2[i]) diff++;
+      }
+      return diff <= 2;
+    }
+
+    let addrLookupToken = 0;
+
+    async function autoCompleteAddressOnline(comp) {
+      const myToken = ++addrLookupToken;
+      const queries = [
+        [comp.desa, comp.kabkota].filter(Boolean).join(' '),
+        [comp.desa, comp.kecamatan].filter(Boolean).join(' '),
+        comp.desa,
+        [comp.kecamatan, comp.kabkota].filter(Boolean).join(' ')
+      ].map(q => q.trim()).filter(q => q.length >= 3);
+
+      for (const q of [...new Set(queries)]) {
+        try {
+          // 1. Cari di API Kode Pos Indonesia
+          const res = await fetch(`https://kodepos.vercel.app/search/?q=${encodeURIComponent(q)}`);
+          if (res.ok) {
+            const json = await res.json();
+            const list = Array.isArray(json.data) ? json.data : [];
+            if (list.length > 0) {
+              // Prioritaskan yang kabupaten/kotanya cocok
+              const match = list.find(item =>
+                comp.kabkota && isSimilarRegionName(item.regency || item.city, comp.kabkota)
+              ) || list[0];
+
+              if (myToken !== addrLookupToken) return;
+              const up = v => String(v || '').toUpperCase().trim();
+
+              if (match.code || match.postal_code) comp.kodepos = String(match.code || match.postal_code);
+              if (match.province && !comp.provinsi) comp.provinsi = up(match.province);
+              if (match.regency && !comp.kabkota) comp.kabkota = up(match.regency);
+              if (match.village && !comp.desa) comp.desa = up(match.village);
+
+              // Koreksi otomatis jika kecamatan kosong atau typo (contoh: Sungai Pagi -> Sungai Pagu)
+              if (match.subdistrict || match.district) {
+                const apiKec = up(match.subdistrict || match.district);
+                if (!comp.kecamatan || isSimilarRegionName(comp.kecamatan, apiKec)) {
+                  comp.kecamatan = apiKec;
+                }
+              }
+
+              populateAddressHelperInputs();
+              rebuildFormattedAddressForCurrentTemplate(false);
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. Cadangan: OpenStreetMap Nominatim jika API pertama gagal
+      try {
+        const osmQuery = [comp.desa, comp.kecamatan, comp.kabkota, comp.provinsi].filter(Boolean).join(', ');
+        if (!osmQuery) return;
+        const resOsm = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=id&limit=1&q=${encodeURIComponent(osmQuery)}`);
+        if (resOsm.ok) {
+          const osmData = await resOsm.json();
+          if (myToken === addrLookupToken && osmData.length > 0 && osmData[0].address) {
+            const a = osmData[0].address;
+            if (a.postcode && !comp.kodepos) comp.kodepos = String(a.postcode).replace(/\D/g, '').slice(0, 5);
+            if (a.state && !comp.provinsi) comp.provinsi = a.state.toUpperCase();
+            if ((a.county || a.city) && !comp.kabkota) comp.kabkota = (a.county || a.city).toUpperCase().replace(/^KABUPATEN\s+/i, '');
+            populateAddressHelperInputs();
+            rebuildFormattedAddressForCurrentTemplate(false);
+          }
+        }
+      } catch (_) {}
+    }
+
     function extractIndonesianAddressComponents(rawAddr) {
       if (!rawAddr || !rawAddr.trim()) {
         appState.addrComponents = { dusun: '', rt: '', rw: '', desa: '', kecamatan: '', kabkota: '', provinsi: '', kodepos: '' };
         appState.addrMissing = [];
         return;
       }
+
       let text = rawAddr.replace(/\s+/g, ' ').trim();
 
-      // ---- 1) RT / RW: dukung "Rt.03/10", "RT 03 RW 10", "RT.03, RW.10", "RT03/RW10", "RT/RW 03/10"
+      // 1. Ekstrak RT & RW (jika tidak ada di WA, otomatis isi default 001 / 002)
       let rt = '', rw = '';
-      let cutStart = -1, cutEnd = -1;
-      const combined = [
+      const rtRwPatterns = [
         /\bRT\.?\s*:?\s*(\d{1,3})\s*(?:[,;]?\s*\/?\s*RW|\/)\s*\.?\s*:?\s*(\d{1,3})\b/i,
         /\bRT\s*\/\s*RW\s*[.:]?\s*(\d{1,3})\s*[\/\-]\s*(\d{1,3})\b/i
       ];
-      for (const re of combined) {
+      for (const re of rtRwPatterns) {
         const m = text.match(re);
         if (m) {
           rt = m[1]; rw = m[2];
-          cutStart = m.index; cutEnd = m.index + m[0].length;
+          text = text.replace(m[0], ' , ');
           break;
         }
       }
-      if (cutStart === -1) {
+      if (!rt && !rw) {
         const mRt = text.match(/\bRT\.?\s*:?\s*(\d{1,3})\b/i);
         const mRw = text.match(/\bRW\.?\s*:?\s*(\d{1,3})\b/i);
-        if (mRt) rt = mRt[1];
-        if (mRw) rw = mRw[1];
-        const hits = [mRt, mRw].filter(Boolean);
-        if (hits.length) {
-          cutStart = Math.min(...hits.map(h => h.index));
-          cutEnd = Math.max(...hits.map(h => h.index + h[0].length));
-        }
+        if (mRt) { rt = mRt[1]; text = text.replace(mRt[0], ' , '); }
+        if (mRw) { rw = mRw[1]; text = text.replace(mRw[0], ' , '); }
       }
 
-      let beforeRt = text, afterRt = '';
-      if (cutStart !== -1) {
-        beforeRt = text.slice(0, cutStart).replace(/[\s,.;:]+$/, '').trim();
-        afterRt = text.slice(cutEnd).replace(/^[\s,.;:]+/, '').trim();
-      } else {
-        afterRt = text; // tanpa RT/RW: seluruh teks diparse sebagai wilayah
-      }
-
-      // ---- 2) Kode pos (5 digit, diambil dari bagian setelah RT/RW agar tidak tertukar nomor rumah)
+      // 2. Ekstrak Kode Pos 5 digit jika tertulis di WA
       let kodepos = '';
-      const zipMatch = afterRt.match(/\b(\d{5})\b/) || (cutStart === -1 ? text.match(/\b(\d{5})\b/) : null);
+      const zipMatch = text.match(/\b(\d{5})\b/);
       if (zipMatch) {
         kodepos = zipMatch[1];
-        afterRt = afterRt.replace(zipMatch[1], '').replace(/\s+/g, ' ').trim();
-        beforeRt = beforeRt.replace(zipMatch[1], '').replace(/\s+/g, ' ').trim();
+        text = text.replace(zipMatch[0], ' ');
       }
 
-      // ---- 3) Wilayah berlabel (Desa/Kel, Kec, Kab/Kota, Prov) -> sisanya posisional
-      const STOP = '(?:desa|des|kelurahan|kel|kecamatan|kec|kabupaten|kab|kota|provinsi|prov|dusun|dsn|dukuh|rt|rw)';
-      const grab = (labelPat, src) => {
-        const re = new RegExp('\\b' + labelPat + '\\b\\.?\\s*:?\\s*([^,;]+?)(?=\\s*[,;]|\\s+' + STOP + '\\b|$)', 'i');
-        const m = src.match(re);
-        return m ? m[1].replace(/^[.:\s]+/, '').trim() : '';
-      };
-      const region = afterRt || beforeRt;
-      let desa = grab('(?:desa|des|kelurahan|kel)', region);
-      let kecamatan = grab('(?:kecamatan|kec)', region);
-      let kabkota = grab('(?:kabupaten|kab|kota)', region);
-      let provinsi = grab('(?:provinsi|prov)', region);
-      let dusun = grab('(?:dusun|dsn|dukuh)', text);
+      // 3. Pecah per koma/titik koma agar segmen berlabel & tanpa label tidak saling tumpang tindih
+      const segments = text.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+      let dusun = '', desa = '', kecamatan = '', kabkota = '', provinsi = '';
+      const unlabeled = [];
 
-      const anyLabel = desa || kecamatan || kabkota || provinsi;
-      if (!anyLabel) {
-        // Tanpa label: urutan umum "<desa> <kecamatan> <kab/kota>"
-        const tokens = afterRt.replace(/[,;]/g, ' ').split(/\s+/).filter(Boolean);
-        if (tokens.length >= 3) {
-          desa = tokens[0];
-          kecamatan = tokens[1];
-          kabkota = tokens.slice(2).join(' ');
-        } else if (tokens.length === 2) {
-          kecamatan = tokens[0];
-          kabkota = tokens[1];
-        } else if (tokens.length === 1) {
-          kabkota = tokens[0];
+      segments.forEach(seg => {
+        let s = seg.replace(/\s+/g, ' ').trim();
+
+        // Cek apakah segmen memiliki beberapa label sekaligus dalam 1 potong kalimat
+        const STOP = '(?:desa|des|kelurahan|kel|nagari|kampung|kecamatan|kec|kabupaten|kab|kota|provinsi|prov|dusun|dsn|dukuh)';
+        const multiCheck = s.match(new RegExp('\\b' + STOP + '\\b', 'gi'));
+
+        if (multiCheck && multiCheck.length > 1) {
+          // Sisipkan koma sebelum tiap label lalu proses ulang
+          s.replace(new RegExp('\\b(' + STOP + ')\\b', 'gi'), ', $1')
+           .split(',').map(x => x.trim()).filter(Boolean)
+           .forEach(sub => segments.push(sub));
+          return;
+        }
+
+        const mDusun = s.match(/^(?:dusun|dsn|dukuh|jl|jalan|gg|gang|blok|perum|komp)\b\.?\s*:?\s*(.+)$/i);
+        const mDesa  = s.match(/^(?:desa|des|kelurahan|kel|nagari|kampung|gampong)\b\.?\s*:?\s*(.+)$/i);
+        const mKec   = s.match(/^(?:kecamatan|kec)\b\.?\s*:?\s*(.+)$/i);
+        const mKab   = s.match(/^(?:kabupaten|kab|kota)\b\.?\s*:?\s*(.+)$/i);
+        const mProv  = s.match(/^(?:provinsi|prov)\b\.?\s*:?\s*(.+)$/i);
+
+        if (mProv) {
+          provinsi = mProv[1].trim();
+        } else if (mKab) {
+          kabkota = mKab[1].trim();
+        } else if (mKec) {
+          kecamatan = mKec[1].trim();
+        } else if (mDesa) {
+          desa = mDesa[1].trim();
+        } else if (mDusun) {
+          dusun = seg.trim(); // Pertahankan kata Jl./Dusun jika ada
+        } else {
+          const upSeg = s.toUpperCase().replace(/^PROVINSI\s+/, '').trim();
+          const matchedProv = DAFTAR_PROVINSI_ID.find(p => upSeg === p || (upSeg === 'SUMBAR' && p === 'SUMATERA BARAT'));
+          if (matchedProv && !provinsi) {
+            provinsi = matchedProv === 'JAKARTA' ? 'DKI JAKARTA' : matchedProv;
+          } else {
+            unlabeled.push(s);
+          }
+        }
+      });
+
+      // 4. Alokasikan segmen tanpa label secara berurutan (Dusun -> Desa -> Kecamatan -> Kab/Kota)
+      if (unlabeled.length > 0) {
+        if (unlabeled.length === 1) {
+          if (!dusun) dusun = unlabeled[0];
+          if (!desa) desa = unlabeled[0];
+        } else {
+          for (const item of unlabeled) {
+            if (!dusun) { dusun = item; continue; }
+            if (!desa) { desa = item; continue; }
+            if (!kecamatan) { kecamatan = item; continue; }
+            if (!kabkota) { kabkota = item; continue; }
+            if (!provinsi) { provinsi = item; continue; }
+          }
         }
       }
 
-      if (!dusun) dusun = (cutStart !== -1 ? beforeRt : '') || desa;
-      if (!desa) desa = dusun;
+      if (!dusun && desa) dusun = desa;
+      if (!desa && dusun) desa = dusun;
 
-      // ---- 4) Provinsi & kode pos dari peta wilayah (cocok per KATA, prioritas kab/kota > kecamatan > teks)
+      // 5. Cek kamus lokal terlebih dahulu
       const wordHit = (needle, key) => new RegExp('(^|[^a-z])' + key + '([^a-z]|$)', 'i').test(needle);
-      const lookups = [kabkota, kecamatan, desa, text];
-      let info = null;
-      for (const src of lookups) {
+      for (const src of [kabkota, kecamatan, desa, text]) {
         if (!src) continue;
         for (const [key, val] of Object.entries(INDONESIA_REGION_MAP)) {
-          if (wordHit(src, key)) { info = val; break; }
+          if (wordHit(src, key)) {
+            if (!provinsi) provinsi = val.provinsi;
+            if (!kodepos) kodepos = val.kodepos;
+            break;
+          }
         }
-        if (info) break;
-      }
-      if (info) {
-        if (!provinsi) provinsi = info.provinsi;
-        if (!kodepos) kodepos = info.kodepos;
       }
 
-      const up = v => (v || '').toUpperCase();
+      const up = v => (v || '').toUpperCase().trim();
       appState.addrComponents = {
         dusun: up(dusun),
-        rt: rt ? pad3(rt) : '',
-        rw: rw ? pad3(rw) : '',
+        rt: rt ? pad3(rt) : '001', // Default RT otomatis jika kosong
+        rw: rw ? pad3(rw) : '002', // Default RW otomatis jika kosong
         desa: up(desa),
         kecamatan: up(kecamatan),
         kabkota: up(kabkota),
         provinsi: up(provinsi),
-        kodepos
+        kodepos: kodepos || ''
       };
+      appState.addrMissing = [];
 
-      // Peringatan jika ada komponen penting yang tidak terbaca (tidak ada lagi nilai tebakan diam-diam)
-      const missing = [];
-      if (!rt) missing.push('RT');
-      if (!rw) missing.push('RW');
-      if (!kecamatan) missing.push('Kecamatan');
-      if (!kabkota) missing.push('Kab/Kota');
-      if (!provinsi) missing.push('Provinsi');
-      if (!kodepos) missing.push('Kode Pos');
-      appState.addrMissing = missing;
+      // 6. Lengkapi Kode Pos & perbaiki typo wilayah secara online di latar belakang
+      autoCompleteAddressOnline(appState.addrComponents);
     }
 
 
