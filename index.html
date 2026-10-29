@@ -37,11 +37,11 @@
     }
 
     /* Custom Font Classes for each Bank Template */
-    .font-bank-A { font-family: 'Montserrat', sans-serif; font-weight: 400; }
+    .font-bank-A { font-family: 'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif; font-weight: 700; }
     .font-bank-B { font-family: 'Ebrima', 'Nirmala UI', 'Noto Sans', sans-serif; font-weight: 400; }
     .font-bank-C { font-family: Arial, 'Liberation Sans', Helvetica, sans-serif; font-weight: 400; }
-    .font-bank-D { font-family: 'Gilroy-Medium', 'Gilroy Medium', 'Gilroy', 'Plus Jakarta Sans', sans-serif; font-weight: 500; }
-    .font-bank-E { font-family: 'Calibri Light', 'Calibri', 'Carlito', 'Segoe UI', sans-serif; font-weight: 300; }
+    .font-bank-D { font-family: 'Montserrat', sans-serif; font-weight: 500; }
+    .font-bank-E { font-family: 'Times New Roman', Times, 'Liberation Serif', serif; font-weight: 400; }
 
     /* Shape kotak: selalu di belakang semua teks (z-index lebih rendah dari .canvas-field-box biasa = 20) */
     .canvas-field-box.type-shape,
@@ -534,7 +534,7 @@
           </button>
 
           <div id="selectedBoxControls" class="hidden items-center gap-1.5 flex-wrap">
-            <select id="selectedBoxFontSelect" onchange="setSelectedBoxFont(this.value)" class="px-1.5 py-1 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold" title="Jenis font"><option value="montserrat">Montserrat</option><option value="ebrima">Ebrima</option><option value="arial">Arial</option><option value="gilroy-medium">Gilroy-Medium</option><option value="calibri-light">Calibri Light</option></select>
+            <select id="selectedBoxFontSelect" onchange="setSelectedBoxFont(this.value)" class="px-1.5 py-1 rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold" title="Jenis font"><option value="montserrat">Montserrat</option><option value="ebrima">Ebrima</option><option value="arial">Arial</option><option value="gilroy-medium">Gilroy-Medium</option><option value="lyulin-bold">Lyulin Bold</option><option value="times">Times New Roman</option><option value="calibri-light">Calibri Light</option></select>
             <div class="inline-flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
               <button onclick="adjustSelectedBoxFontSize(-1)" class="px-2 py-1 hover:bg-white rounded-md font-bold text-slate-700" title="Perkecil Font">A-</button>
               <input id="selectedBoxFontSizeInput" type="number" min="6" max="400" step="0.5" onchange="pushHistorySnapshot(); setSelectedBoxFontSize(this.value)" class="w-14 px-1 text-center bg-transparent font-mono text-[11px] font-semibold text-slate-700 outline-none" title="Ukuran font (px)" />
@@ -837,16 +837,18 @@
     const FONT_FILES = {
       'Ebrima':        ['Ebrima.woff2'],
       'Calibri Light': ['Calibri Light.woff2'],
-      'Gilroy-Medium': ['Gilroy-Medium.woff2']
+      'Gilroy-Medium': ['Gilroy-Medium.woff2'],
+      'Lyulin Bold':   ['LyuLin Heavy.woff2']
     };
     (function injectWoff2Fonts() {
-      const weights = { 'Ebrima': 400, 'Calibri Light': 300, 'Gilroy-Medium': 500 };
+      const weights = { 'Ebrima': 400, 'Calibri Light': 300, 'Gilroy-Medium': 500, 'Lyulin Bold': 700 };
       let css = '';
       Object.entries(FONT_FILES).forEach(([family, names]) => {
         const urls = [];
         FONT_DIRS.forEach(d => names.forEach(n => { const u = d + n; if (!urls.includes(u)) urls.push(u); }));
         const src = [`local('${family}')`].concat(urls.map(u => `url('${encodeURI(u)}') format('woff2')`)).join(', ');
         css += `@font-face{font-family:'${family}';src:${src};font-weight:${weights[family]};font-display:swap;}\n`;
+        if (family === 'Lyulin Bold') css += `@font-face{font-family:'Lyulin';src:${src};font-weight:700;font-display:swap;}\n`;
         if (family === 'Gilroy-Medium') css += `@font-face{font-family:'Gilroy Medium';src:${src};font-weight:500;font-display:swap;}\n`;
       });
       const st = document.createElement('style'); st.id = 'woff2-fonts'; st.textContent = css; document.head.appendChild(st);
@@ -1012,7 +1014,7 @@
       B: 'https://marketingexata.github.io/statement/template%20statement/bankB.png',
       C: 'https://marketingexata.github.io/statement/template%20statement/bankC2.jpg',
       D: 'https://marketingexata.github.io/statement/template%20statement/bankD2.jpg',
-      E: 'https://marketingexata.github.io/statement/template%20statement/bankE.png'
+      E: 'https://marketingexata.github.io/statement/template%20statement/bankE2.jpg'
     };
 
     const TEMPLATE_FILE_NAMES = {
@@ -1100,16 +1102,18 @@
     // Ukuran kanvas (piksel) per template. Bank C dan E memakai ukuran khusus.
     const CANVAS_TARGET_SIZES = {
       A: { w: 2319, h: 1003 },
+      B: { w: 2480, h: 1157 },
       C: { w: 2480, h: 770 },
       D: { w: 2479, h: 1393 },
-      E: { w: 1553, h: 489 }
+      E: { w: 2480, h: 1250 }
     };
     // Ukuran desain awal tampilan template bawaan (HTML) sebelum diskalakan ke ukuran target.
     const BUILTIN_DESIGN_SIZES = {
       A: { w: 900, h: 410 },
+      B: { w: 900, h: 420 },
       C: { w: 900, h: 330 },
       D: { w: 900, h: 470 },
-      E: { w: 900, h: 340 }
+      E: { w: 900, h: 454 }
     };
 
     // Skalakan posisi & ukuran semua kotak dari ukuran kanvas lama ke ukuran baru.
@@ -1153,57 +1157,65 @@
     function getBaseLayouts() {
       return {
         A: {
-          canvasHeight: 410,
+          // Koordinat langsung pada kanvas 2319 x 1003 px (diukur dari gambar acuan BCA)
+          canvasWidth: 2319,
+          canvasHeight: 1003,
           boxes: {
-            p3: { id: 'p3', badge: '3 • CAB.', type: 'auto', x: 96, y: 97, w: 185, h: 24, fontSize: 12, align: 'left', bold: true },
-            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 58, y: 123, w: 260, h: 25, fontSize: 12, align: 'left', bold: true },
-            p6: { id: 'p6', badge: '6 • Alamat Menurun', type: 'auto', x: 58, y: 151, w: 325, h: 98, fontSize: 11, align: 'left', bold: true },
-            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 650, y: 126, w: 200, h: 24, fontSize: 12, align: 'left', bold: true },
-            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 650, y: 175, w: 210, h: 24, fontSize: 12, align: 'left', bold: true }
+            p3: { id: 'p3', badge: '3 • CAB.', type: 'auto', x: 107, y: 224, w: 476, h: 56, fontSize: 30, align: 'left', bold: true },
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 107, y: 308, w: 669, h: 60, fontSize: 30, align: 'left', bold: true },
+            p6: { id: 'p6', badge: '6 • Alamat Menurun', type: 'auto', x: 107, y: 376, w: 837, h: 238, fontSize: 28, align: 'left', bold: true },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 1662, y: 301, w: 515, h: 59, fontSize: 30, align: 'left', bold: true },
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 1662, y: 427, w: 541, h: 59, fontSize: 29, align: 'left', bold: true }
           }
         },
         B: {
-          canvasHeight: 420,
+          // Koordinat langsung pada kanvas 2480 x 1157 px (diukur dari gambar acuan BRI)
+          canvasWidth: 2480,
+          canvasHeight: 1157,
           boxes: {
-            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 34, y: 155, w: 260, h: 24, fontSize: 12, align: 'left', bold: true },
-            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 34, y: 185, w: 310, h: 52, fontSize: 11, align: 'left', bold: true },
-            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 155, y: 250, w: 175, h: 24, fontSize: 12, align: 'left', bold: true },
-            mA: { id: 'mA', badge: 'A • Tanggal Laporan', type: 'manual', x: 575, y: 120, w: 220, h: 24, fontSize: 12, align: 'left', bold: true },
-            mB: { id: 'mB', badge: 'B • Periode', type: 'manual', x: 575, y: 158, w: 230, h: 24, fontSize: 12, align: 'left', bold: true },
-            p3: { id: 'p3', badge: '3 • Unit Kerja', type: 'auto', x: 575, y: 248, w: 265, h: 26, fontSize: 11, align: 'left', bold: true },
-            p2: { id: 'p2', badge: '2 • Alamat Unit (Kanca/Kanwil)', type: 'auto', x: 575, y: 288, w: 265, h: 40, fontSize: 11, align: 'left', bold: true }
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 95, y: 437, w: 715, h: 63, fontSize: 33, align: 'left', bold: true },
+            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 95, y: 512, w: 854, h: 142, fontSize: 28, align: 'left', bold: true },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 410, y: 696, w: 483, h: 65, fontSize: 33, align: 'left', bold: true },
+            mA: { id: 'mA', badge: 'A • Tanggal Laporan', type: 'manual', x: 1584, y: 326, w: 608, h: 64, fontSize: 30, align: 'left', bold: true },
+            mB: { id: 'mB', badge: 'B • Periode', type: 'manual', x: 1584, y: 431, w: 636, h: 65, fontSize: 30, align: 'left', bold: true },
+            p3: { id: 'p3', badge: '3 • Unit Kerja', type: 'auto', x: 1584, y: 705, w: 733, h: 70, fontSize: 28, align: 'left', bold: true },
+            p2: { id: 'p2', badge: '2 • Alamat Unit (Kanca/Kanwil)', type: 'auto', x: 1584, y: 810, w: 733, h: 108, fontSize: 28, align: 'left', bold: true }
           }
         },
         C: {
-          canvasHeight: 330,
+          // Koordinat langsung pada kanvas 2480 x 770 px (diukur dari gambar acuan BNI, versi ralat)
+          canvasWidth: 2480,
+          canvasHeight: 770,
           boxes: {
-            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 758, y: 69, w: 125, h: 24, fontSize: 11, align: 'left', bold: false },
-            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 20, y: 130, w: 240, h: 24, fontSize: 13, align: 'left', bold: true },
-            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 20, y: 160, w: 340, h: 54, fontSize: 12, align: 'left', bold: false },
-            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 756, y: 134, w: 120, h: 22, fontSize: 12, align: 'left', bold: true },
-            p3: { id: 'p3', badge: '3 • Kantor Cabang', type: 'auto', x: 632, y: 164, w: 115, h: 22, fontSize: 11, align: 'left', bold: false },
-            mB: { id: 'mB', badge: 'B • Ringkasan Saldo (4 Kolom)', type: 'manual', x: 48, y: 274, w: 804, h: 28, fontSize: 13, align: 'center', bold: true }
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 2035, y: 194, w: 345, h: 55, fontSize: 28.7, align: 'left', bold: false },
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 88, y: 277, w: 660, h: 55, fontSize: 36, align: 'left', bold: true },
+            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 88, y: 360, w: 936, h: 125, fontSize: 33, align: 'left', bold: false },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 2129, y: 356, w: 332, h: 50, fontSize: 30, align: 'left', bold: true },
+            p3: { id: 'p3', badge: '3 • Kantor Cabang', type: 'auto', x: 1466, y: 417, w: 316, h: 49, fontSize: 30, align: 'left', bold: false },
+            mB: { id: 'mB', badge: 'B • Ringkasan Saldo (4 Kolom)', type: 'manual', x: 95, y: 612, w: 2294, h: 65, fontSize: 36, align: 'center', bold: true }
           }
         },
         D: {
-          canvasHeight: 470,
+          // Koordinat langsung pada kanvas 2479 x 1393 px (diukur dari gambar acuan Mandiri)
+          canvasWidth: 2479,
+          canvasHeight: 1393,
           boxes: {
-            p5: { id: 'p5', badge: '5 • Nama / Name', type: 'auto', x: 175, y: 138, w: 160, h: 24, fontSize: 12, align: 'left', bold: false },
-            p3: { id: 'p3', badge: '3 • Cabang / Branch', type: 'auto', x: 175, y: 168, w: 160, h: 24, fontSize: 12, align: 'left', bold: false },
-            mA: { id: 'mA', badge: 'A • Periode / Period', type: 'manual', x: 495, y: 138, w: 195, h: 24, fontSize: 12, align: 'left', bold: false },
-            mB: { id: 'mB', badge: 'B • Dicetak pada', type: 'manual', x: 495, y: 168, w: 195, h: 24, fontSize: 12, align: 'left', bold: false },
-            p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 230, y: 266, w: 165, h: 24, fontSize: 12, align: 'left', bold: false },
-            mC: { id: 'mC', badge: 'C • Mutasi & Saldo (4 Baris)', type: 'manual', x: 660, y: 246, w: 175, h: 118, fontSize: 12, align: 'right', bold: false }
+            p5: { id: 'p5', badge: '5 • Nama / Name', type: 'auto', x: 487, y: 412, w: 437, h: 71, fontSize: 33, align: 'left', bold: false },
+            p3: { id: 'p3', badge: '3 • Cabang / Branch', type: 'auto', x: 487, y: 500, w: 437, h: 69, fontSize: 33, align: 'left', bold: false },
+            mA: { id: 'mA', badge: 'A • Periode / Period', type: 'manual', x: 1384, y: 411, w: 533, h: 72, fontSize: 33, align: 'left', bold: false },
+            mB: { id: 'mB', badge: 'B • Dicetak pada', type: 'manual', x: 1384, y: 504, w: 533, h: 68, fontSize: 33, align: 'left', bold: false },
+            p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 642, y: 781, w: 453, h: 69, fontSize: 33, align: 'left', bold: false },
+            mC: { id: 'mC', badge: 'C • Mutasi & Saldo (4 Baris)', type: 'manual', x: 1819, y: 703, w: 477, h: 316, fontSize: 33, align: 'right', bold: false }
           }
         },
         E: {
-          canvasHeight: 340,
+          canvasHeight: 454,
           boxes: {
-            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 45, y: 140, w: 220, h: 25, fontSize: 13, align: 'left', bold: false },
-            p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 45, y: 174, w: 380, h: 58, fontSize: 12, align: 'left', bold: false },
-            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 512, y: 162, w: 135, h: 20, fontSize: 11, align: 'left', bold: false },
-            p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 230, y: 277, w: 150, h: 24, fontSize: 12, align: 'left', bold: false },
-            mB: { id: 'mB', badge: 'B • Saldo Bulan Lalu', type: 'manual', x: 700, y: 276, w: 155, h: 26, fontSize: 13, align: 'right', bold: false }
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 19, y: 146, w: 221, h: 36, fontSize: 25, align: 'left', bold: true },
+            p3: { id: 'p3', badge: '3 • Kantor Cabang', type: 'auto', x: 19, y: 187, w: 360, h: 22, fontSize: 17.5, align: 'left', bold: false },
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 688, y: 185, w: 165, h: 23, fontSize: 18, align: 'left', bold: false },
+            p4: { id: 'p4', badge: '4 • Nomor Rekening', type: 'auto', x: 202, y: 410, w: 95, h: 28, fontSize: 17, align: 'left', bold: false },
+            mB: { id: 'mB', badge: 'B • Saldo Bulan Lalu', type: 'manual', x: 737, y: 410, w: 148, h: 28, fontSize: 17, align: 'right', bold: true }
           }
         }
       };
@@ -1291,7 +1303,7 @@
           E: {
             p4: '7080507857',
             p5: 'AGO HARDIANTO PUTRA',
-            p6: 'PLUMBON 003 010, PLUMBON MOJOLABAN SUKOHARJO, JAWA TENGAH',
+            p3: 'PEKAYON',
             mA: d.expE_periode,
             mB: '5.850.000,00'
           }
@@ -1421,6 +1433,14 @@
             });
           }
           appState.githubTemplatesDefault = true;
+          if (appState.bsiLayoutV2 && !appState.bsiLayoutV3) { const L = appState.layouts.E, b3 = L && L.boxes && L.boxes.p3; if (b3) b3.w = Math.round(360 * (L.canvasWidth || 900) / 900); appState.bsiLayoutV3 = true; }
+          if (!appState.bcaLayoutV2) { appState.layouts.A = normalizeLayouts({ A: getBaseLayouts().A }).A; appState.bcaLayoutV2 = true; }
+          if (!appState.briLayoutV2) { appState.layouts.B = normalizeLayouts({ B: getBaseLayouts().B }).B; appState.briLayoutV2 = true; }
+          if (!appState.mandiriLayoutV2) { appState.layouts.D = normalizeLayouts({ D: getBaseLayouts().D }).D; appState.mandiriLayoutV2 = true; }
+          if (!appState.bniLayoutV4) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV4 = true; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
+          if (!appState.bniLayoutV2) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
+          if (!appState.bsiLayoutV2) { appState.layouts.E = normalizeLayouts({ E: getBaseLayouts().E }).E; appState.bsiLayoutV2 = true; appState.bsiLayoutV3 = true; }
+          if (appState.templatesData.E && appState.templatesData.E.p3 == null) appState.templatesData.E.p3 = '';
           appState.blur = appState.blur || {};
           if (!appState.blurDefaultOff) { Object.values(appState.blur).forEach(c => { c.auto = false; }); appState.blurDefaultOff = true; }
           // BCA: alamat menurun tanpa spasi antar baris (migrasi data lama)
@@ -1894,6 +1914,14 @@
       return res;
     }
 
+    // BSI: hanya nama kantor (tanpa KCU/KCP/KC/KFO/Unit/dll), huruf kapital. "KCU Pekayon" -> "PEKAYON"
+    function officeNameOnly(v) {
+      let t = String(v || '').replace(/\s+/g, ' ').trim().toUpperCase();
+      let prev;
+      do { prev = t; t = t.replace(/^(BANK\s+SYARIAH\s+INDONESIA|BSI|KANTOR\s+CABANG\s+PEMBANTU|KANTOR\s+CABANG|KANTOR\s+FUNGSIONAL\s+OPERASIONAL|KANTOR\s+KAS|KCU|KCP|KFO|KCI|KC|KK|UNIT|CABANG)\b[\s.\-:]*/, '').trim(); } while (t !== prev);
+      return t;
+    }
+
     function syncOfficeMatches() {
       const p = appState.parsed;
       ['A', 'B', 'C', 'D', 'E'].forEach(exp => {
@@ -1911,7 +1939,7 @@
           t.pUnit = r.unit ? r.unit.alamat : '';
           t.pKanwil = r.kw ? kanwilLabel(r.kw, 'B') : '';
         } else if (r.main) {
-          t.p3 = officeLabel(r.main, exp);
+          t.p3 = exp === 'E' ? officeNameOnly(officeLabel(r.main, exp)) : officeLabel(r.main, exp);
           t.pUnit = officeLabel(r.main, exp);
           t.p2 = (r.main.alamat || '').toUpperCase();
           t.pKanwil = r.kw ? kanwilLabel(r.kw, exp) : '';
@@ -2127,7 +2155,7 @@
 
       appState.templatesData.E.p4 = akun;
       appState.templatesData.E.p5 = namaUpper;
-      appState.templatesData.E.p6 = formatAddressForTemplate('E', c);
+      appState.templatesData.E.p3 = officeNameOnly(p.kantorCabangRaw);
 
       syncOfficeMatches(); // timpa p3/p2/pUnit dengan hasil pencocokan database bila ada
     }
@@ -2225,11 +2253,11 @@
     }
 
     const EXPEDITION_META = {
-      A: { name: 'BCA', fontLabel: 'Font: Montserrat Bold' },
+      A: { name: 'BCA', fontLabel: 'Font: LyuLin Heavy (kapital)' },
       B: { name: 'BRI', fontLabel: 'Font: Arial Bold' },
       C: { name: 'BNI', fontLabel: 'Font: Calibri' },
-      D: { name: 'MANDIRI', fontLabel: 'Font: Gilroy Medium' },
-      E: { name: 'BSI', fontLabel: 'Font: Calibri Light' }
+      D: { name: 'MANDIRI', fontLabel: 'Font: Montserrat' },
+      E: { name: 'BSI', fontLabel: 'Font: Times New Roman' }
     };
 
     function selectExpedition(exp) {
@@ -2512,33 +2540,31 @@
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">
+                <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">3</span> Kantor Cabang <span class="font-normal text-slate-400">(nama saja, tanpa KCU/KCP)</span>
+              </label>
+              <input type="text" value="${escapeHtml(data.p3)}" oninput="updateTemplateFieldValue('E','p3',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">
                 <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">4</span> Nomor Rekening
               </label>
               <input type="text" value="${escapeHtml(data.p4)}" oninput="updateTemplateFieldValue('E','p4',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold" />
             </div>
-          </div>
-          <div>
-            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
-              <span><span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 mr-1">6</span> Alamat Lengkap</span>
-            </label>
-            <textarea rows="2" oninput="updateTemplateFieldValue('E','p6',this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono">${escapeHtml(data.p6)}</textarea>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
                 <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">A</span> Periode</span>
               </label>
               <input type="text" value="${escapeHtml(data.mA)}" oninput="updateTemplateFieldValue('E','mA',this.value)" class="w-full px-3 py-2 rounded-xl border border-blue-300 bg-blue-50/30 text-xs font-semibold" />
             </div>
-            <div>
-              <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
-                <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">B</span> Saldo Bulan Lalu (≥ 500.000)</span>
-                <button type="button" onclick="generateRandomFinancials('E')" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
-                  <i data-lucide="dices" class="w-3.5 h-3.5"></i> Isi Random
-                </button>
-              </label>
-              <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('E','mB',this.value)" class="w-full px-3 py-2 rounded-xl border border-amber-400 bg-amber-50/30 text-xs font-mono font-bold" />
-            </div>
+          </div>
+          <div>
+            <label class="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 mr-1">B</span> Saldo Bulan Lalu (≥ 500.000)</span>
+              <button type="button" onclick="generateRandomFinancials('E')" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                <i data-lucide="dices" class="w-3.5 h-3.5"></i> Isi Random
+              </button>
+            </label>
+            <input type="text" value="${escapeHtml(data.mB)}" oninput="updateTemplateFieldValue('E','mB',this.value)" class="w-full px-3 py-2 rounded-xl border border-amber-400 bg-amber-50/30 text-xs font-mono font-bold" />
           </div>
         `;
       }
@@ -2685,22 +2711,15 @@
       }
       if (exp === 'E') {
         return `
-          <div class="w-full h-full bg-white font-bank-E text-slate-900 relative bank-e-grid overflow-hidden">
-            <div class="absolute -top-12 -right-12 w-[230px] h-[230px] rounded-full border-[38px] border-[#ee9b27] pointer-events-none"></div>
-            <div class="absolute top-0 right-0 w-[125px] h-[195px] bg-[#ee9b27] pointer-events-none" style="clip-path: path('M 10 0 L 125 0 L 125 195 Q 95 75 10 0 Z');"></div>
-            <div class="absolute left-8 top-6 w-[690px] h-[76px] bg-white flex items-center px-6">
-              <span class="text-[#ee9b27] text-[35px] font-extrabold tracking-wide" style="font-family: 'Montserrat', sans-serif;">BANK E</span>
-            </div>
-            <div class="absolute left-[462px] top-[136px] text-[11.5px] text-slate-800">Rekening : <span class="font-medium text-[13px]">1/1</span></div>
-            <div class="absolute left-[462px] top-[158px] h-[20px] flex items-center text-[11.5px] text-slate-800"><span>Periode</span></div>
-            <div class="absolute left-[655px] top-[156px] text-[13.5px] font-bold text-slate-900 tracking-tight" style="font-family: 'Calibri', sans-serif;">LAPORAN REKENING</div>
-            <div class="absolute left-[462px] top-[185px] w-[295px] h-[48px] border border-slate-700 bg-white"></div>
-            <div class="absolute left-10 right-14 top-[248px] h-[1.5px] bg-slate-700"></div>
-            <div class="absolute left-11 top-[262px] text-[11px] font-bold text-slate-900 tracking-tight" style="font-family: 'Calibri', sans-serif;">RINGKASAN TRANSAKSI</div>
-            <div class="absolute left-24 top-[280px] h-[22px] flex items-center text-[13px] text-slate-900">
-              <span class="font-bold" style="font-family: 'Calibri', sans-serif;">NOMOR REKENING</span><span class="text-[11px] ml-1">- IDR -</span>
-            </div>
-            <div class="absolute right-[45px] top-[262px] text-[11.5px] text-slate-800 text-right">SALDO BULAN LALU</div>
+          <div class="w-full h-full bg-white font-bank-E text-slate-900 relative overflow-hidden" style="border:1px solid #444;box-sizing:border-box;font-size:17px;">
+            <div class="absolute" style="left:472px;top:183px;">PERIODE LAPORAN</div>
+            <div class="absolute" style="left:683px;top:183px;">:</div>
+            <div class="absolute" style="left:472px;top:213px;">REKENING</div>
+            <div class="absolute" style="left:683px;top:213px;">: 1/1</div>
+            <div class="absolute" style="left:20px;top:260px;width:860px;height:97px;background:#fdf3e3;border-radius:12px;"></div>
+            <div class="absolute font-bold" style="left:24px;top:383px;">RINGKASAN TRANSAKSI</div>
+            <div class="absolute" style="left:24px;top:410px;">EASY WADIAH - IDR -</div>
+            <div class="absolute" style="right:24px;top:383px;">SALDO BULAN LALU</div>
           </div>
         `;
       }
@@ -2775,6 +2794,7 @@
         boxEl.style.fontSize = `${box.fontSize || 12}px`;
         boxEl.style.textAlign = box.align || 'left';
         const fontDef = getBoxFont(exp, box);
+        if (exp === 'A') boxEl.style.letterSpacing = '0.105em'; // jarak antar huruf BCA (diukur dari contoh: ~0,105 em)
         boxEl.style.fontFamily = fontDef.css;
         boxEl.style.fontWeight = box.bold ? '700' : String(fontDef.weight);
         if (box.color) boxEl.style.color = box.color;
@@ -2796,11 +2816,11 @@
         } else if (exp === 'D' && box.id === 'mC') {
           contentEl.style.whiteSpace = 'normal';
           contentEl.style.lineHeight = '1.2';
-          contentEl.innerHTML = `<div class="flex flex-col justify-between w-full h-full"><div class="h-[24px] flex items-center justify-end gap-1.5"><span>${escapeHtml(data.saldoAwal)}</span><span>IDR</span></div><div class="h-[24px] flex items-center justify-end gap-1.5 text-emerald-600"><span>+${escapeHtml(data.danaMasuk)}</span><span>IDR</span></div><div class="h-[24px] flex items-center justify-end gap-1.5"><span>-${escapeHtml(data.danaKeluar)}</span><span>IDR</span></div><div class="h-[24px] flex items-center justify-end gap-1.5 font-semibold"><span>${escapeHtml(data.saldoAkhir)}</span><span>IDR</span></div></div>`;
+          contentEl.innerHTML = `<div class="flex flex-col justify-between w-full h-full"><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5"><span>${escapeHtml(data.saldoAwal)}</span><span>IDR</span></div><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5 text-emerald-600"><span>+${escapeHtml(data.danaMasuk)}</span><span>IDR</span></div><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5"><span>-${escapeHtml(data.danaKeluar)}</span><span>IDR</span></div><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5 font-semibold"><span>${escapeHtml(data.saldoAkhir)}</span><span>IDR</span></div></div>`;
         } else {
-          contentEl.style.whiteSpace = 'pre-wrap';
+          contentEl.style.whiteSpace = ((exp === 'E' && box.id === 'p3') || (exp === 'C' && box.id === 'mA')) ? 'nowrap' : 'pre-wrap'; // nama cabang BSI tidak turun baris
           contentEl.style.lineHeight = exp === 'A' && box.id === 'p6' ? '1.08' : '1.25';
-          contentEl.textContent = getBoxText(exp, box);
+          contentEl.textContent = getDisplayText(exp, box);
           contentEl.addEventListener('dblclick', e => {
             e.stopPropagation();
             contentEl.setAttribute('contenteditable', 'true');
@@ -2811,7 +2831,7 @@
             contentEl.removeAttribute('contenteditable');
             if (effBlur > 0) contentEl.style.filter = `blur(${effBlur}px)`;
             const newVal = contentEl.innerText;
-            if (getBoxText(exp, box) !== newVal) {
+            if (getDisplayText(exp, box) !== newVal) {
               pushHistorySnapshot();
               setBoxText(exp, box, newVal);
               renderDynamicForm();
@@ -2982,13 +3002,24 @@
       'ebrima':        { label: 'Ebrima',        css: "'Ebrima', 'Nirmala UI', 'Noto Sans', sans-serif", weight: 400 },
       'arial':         { label: 'Arial',         css: "Arial, 'Liberation Sans', Helvetica, sans-serif", weight: 400 },
       'gilroy-medium': { label: 'Gilroy-Medium', css: "'Gilroy-Medium', 'Gilroy Medium', 'Gilroy', 'Plus Jakarta Sans', sans-serif", weight: 500 },
+      'times':         { label: 'Times New Roman', css: "'Times New Roman', Times, 'Liberation Serif', serif", weight: 400 },
+      'lyulin-bold':   { label: 'Lyulin Bold',   css: "'Lyulin Bold', 'Lyulin', 'Montserrat', sans-serif", weight: 700 },
       'calibri-light': { label: 'Calibri Light', css: "'Calibri Light', 'Calibri', 'Carlito', 'Segoe UI', sans-serif", weight: 300 }
     };
     // Font bawaan preview per bank: BCA Montserrat, BRI Ebrima, BNI Arial, Mandiri Gilroy-Medium, BSI Calibri Light
-    const EXP_FONT = { A: 'montserrat', B: 'ebrima', C: 'arial', D: 'gilroy-medium', E: 'calibri-light' };
+    const EXP_FONT = { A: 'lyulin-bold', B: 'ebrima', C: 'arial', D: 'montserrat', E: 'times' };
 
     function getBoxFont(exp, box) {
-      return FONT_OPTIONS[(box && box.fontKey) || EXP_FONT[exp]] || FONT_OPTIONS[EXP_FONT[exp]];
+      const def = FONT_OPTIONS[(box && box.fontKey) || EXP_FONT[exp]] || FONT_OPTIONS[EXP_FONT[exp]];
+      return (exp === 'D' && !(box && box.fontKey)) ? { ...def, weight: 500 } : def; // Mandiri: Montserrat Medium
+    }
+    // Teks otomatis KAPITAL: BCA semua kotak, Mandiri hanya kotak Nama (5).
+    function isUpperBox(exp, box) {
+      return exp === 'A' || (exp === 'D' && box && box.id === 'p5');
+    }
+    function getDisplayText(exp, box) {
+      const t = getBoxText(exp, box);
+      return isUpperBox(exp, box) ? String(t).toUpperCase() : t;
     }
     function getBoxText(exp, box) {
       return box.type === 'custom' ? (box.text || '') : (appState.templatesData[exp][box.id] || '');
@@ -3739,8 +3770,7 @@
     // Slider "Atur Gambar Template" tetap menampilkan 100% sebagai titik awal.
     const BG_BASE_FACTORS = {
       A: { sy: 0.99 }, // BCA: 90% bawaan x 110% shrink atas-bawah (slider tetap 100%)
-      C: { sy: 0.9 },
-      E: { sy: 0.9 }
+      C: { sy: 0.9 }
     };
 
     function getBgAdjust(exp) {
