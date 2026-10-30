@@ -1303,11 +1303,13 @@
           canvasWidth: 2319,
           canvasHeight: 1003,
           boxes: {
-            p3: { id: 'p3', badge: '3 • CAB.', type: 'auto', x: 107, y: 224, w: 476, h: 56, fontSize: 30, align: 'left', bold: true },
-            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 107, y: 308, w: 669, h: 60, fontSize: 30, align: 'left', bold: true },
-            p6: { id: 'p6', badge: '6 • Alamat Menurun', type: 'auto', x: 107, y: 376, w: 837, h: 238, fontSize: 28, align: 'left', bold: true },
-            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 1662, y: 301, w: 515, h: 59, fontSize: 30, align: 'left', bold: true },
-            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 1662, y: 427, w: 541, h: 59, fontSize: 29, align: 'left', bold: true }
+            p3: { id: 'p3', badge: '3 • CAB.', type: 'auto', x: 107, y: 224, w: 476, h: 56, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold' },
+            p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 107, y: 308, w: 669, h: 60, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold' },
+            p6: { id: 'p6', badge: '6 • Alamat Menurun', type: 'auto', x: 107, y: 376, w: 837, h: 238, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold' },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 1662, y: 301, w: 515, h: 59, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold' },
+            tx_hal: { id: 'tx_hal', badge: 'Teks tambahan', type: 'custom', text: '1/1', x: 1662, y: 364, w: 145, h: 59, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold', color: '#000000' },
+            mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 1662, y: 427, w: 541, h: 59, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold' },
+            tx_idr: { id: 'tx_idr', badge: 'Teks tambahan', type: 'custom', text: 'IDR', x: 1662, y: 490, w: 465, h: 59, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold', color: '#000000' }
           }
         },
         B: {
@@ -1423,7 +1425,7 @@
             p3: 'KCP PULOGADUNG TRADE CENTER',
             p4: '7080507857',
             p5: 'AGO HARDIANTO PUTRA',
-            p6: 'MOJOLABAN\nRT 003 RW 010 JAWA TENGAH\nPLUMBON\nSUKOHARJO 57554\nINDONESIA',
+            p6: 'MOJOLABAN\nPLUMBON\nPLUMBON RT 003 RW 010\nSUKOHARJO 57554\nINDONESIA',
             mA: d.expA_periode,
             halaman: '1/1'
           },
@@ -1437,15 +1439,15 @@
             mB: d.expB_periode
           },
           C: {
-            p3: 'KCP Pulogadung trade center',
+            p3: 'PULOGADUNG TRADE CENTER',
             p4: '7080507857',
             p5: 'AGO HARDIANTO PUTRA',
-            p6: 'PLUMBON 003 010, PLUMBON MOJOLABAN SUKOHARJO, JAWA TENGAH',
+            p6: 'PLUMBON 003 010, PLUMBON KEC. MOJOLABAN KAB. SUKOHARJO, JAWA TENGAH',
             mA: d.expC_periode,
-            saldoAwal: '3.450.000,00',
-            totalPemasukan: '12.800.000,00',
-            totalPengeluaran: '9.150.000,00',
-            saldoAkhir: '7.100.000,00'
+            saldoAwal: '3.450.000',
+            totalPemasukan: '12.800.000',
+            totalPengeluaran: '9.150.000',
+            saldoAkhir: '7.100.000'
           },
           D: {
             p3: 'KCP Pulogadung trade center',
@@ -1622,12 +1624,42 @@
           // BCA: alamat menurun tanpa spasi antar baris (migrasi data lama)
           if (appState.templatesData.A.p6) appState.templatesData.A.p6 = String(appState.templatesData.A.p6).replace(/\n{2,}/g, '\n');
           // Migrasi sekali: data lama Bank A/C/D yang tersimpan ikut diberi awalan "KCP"
+          if (!appState.bcaAddressOrderV3 && appState.parsed && appState.parsed.alamatIndonesiaRaw) {
+            extractIndonesianAddressComponents(appState.parsed.alamatIndonesiaRaw);
+            syncParsedDataToAllTemplates();
+            appState.bcaAddressOrderV3 = true;
+          }
+		  // Migrasi: hanya Bank A dan D yang memakai awalan "KCP"
           if (!appState.kcpPrefixApplied) {
-            ['A', 'C', 'D'].forEach(k => {
+            ['A', 'D'].forEach(k => {
               const t = appState.templatesData[k];
               if (t && t.p3) t.p3 = withKcpPrefix(t.p3);
             });
             appState.kcpPrefixApplied = true;
+          }
+          // Migrasi otomatis kotak default "1/1" & "IDR" di BCA serta pembersihan BNI
+          if (!appState.bcaBniUpdateV1) {
+            const boxesA = appState.layouts?.A?.boxes;
+            if (boxesA) {
+              if (!boxesA.tx_hal) {
+                boxesA.tx_hal = { id: 'tx_hal', badge: 'Teks tambahan', type: 'custom', text: '1/1', x: 1662, y: 364, w: 145, h: 59, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold', color: '#000000' };
+              }
+              if (!boxesA.tx_idr) {
+                boxesA.tx_idr = { id: 'tx_idr', badge: 'Teks tambahan', type: 'custom', text: 'IDR', x: 1662, y: 490, w: 465, h: 59, fontSize: 30, align: 'left', bold: true, fontKey: 'montserrat-bold', color: '#000000' };
+              }
+              if (boxesA.mA) boxesA.mA.fontSize = 30;
+            }
+            const tC = appState.templatesData?.C;
+            if (tC) {
+              if (tC.p3) tC.p3 = officeNameOnly(tC.p3);
+              ['saldoAwal', 'totalPemasukan', 'totalPengeluaran', 'saldoAkhir'].forEach(k => {
+                if (tC[k]) tC[k] = String(tC[k]).replace(/,00\b/g, '');
+              });
+              if (appState.addrComponents) {
+                tC.p6 = formatAddressForTemplate('C', appState.addrComponents);
+              }
+            }
+            appState.bcaBniUpdateV1 = true;
           }
           return true;
         }
@@ -1765,20 +1797,76 @@
     }
 
     const DAFTAR_PROVINSI_ID = [
-      'ACEH', 'SUMATERA UTARA', 'SUMATERA BARAT', 'RIAU', 'KEPULAUAN RIAU', 'JAMBI',
-      'SUMATERA SELATAN', 'BENGKULU', 'LAMPUNG', 'KEPULAUAN BANGKA BELITUNG', 'BANGKA BELITUNG',
-      'DKI JAKARTA', 'JAKARTA', 'JAWA BARAT', 'BANTEN', 'JAWA TENGAH', 'DI YOGYAKARTA',
-      'YOGYAKARTA', 'JAWA TIMUR', 'BALI', 'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR',
-      'KALIMANTAN BARAT', 'KALIMANTAN TENGAH', 'KALIMANTAN SELATAN', 'KALIMANTAN TIMUR',
-      'KALIMANTAN UTARA', 'SULAWESI UTARA', 'GORONTALO', 'SULAWESI TENGAH', 'SULAWESI BARAT',
-      'SULAWESI SELATAN', 'SULAWESI TENGGARA', 'MALUKU', 'MALUKU UTARA', 'PAPUA',
-      'PAPUA BARAT', 'PAPUA BARAT DAYA', 'PAPUA TENGAH', 'PAPUA PEGUNUNGAN', 'PAPUA SELATAN'
+      'KEPULAUAN BANGKA BELITUNG', 'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR',
+      'KALIMANTAN SELATAN', 'KALIMANTAN TENGAH', 'KALIMANTAN TIMUR', 'KALIMANTAN UTARA', 'KALIMANTAN BARAT',
+      'SULAWESI SELATAN', 'SULAWESI TENGGARA', 'SULAWESI TENGAH', 'SULAWESI UTARA', 'SULAWESI BARAT',
+      'SUMATERA SELATAN', 'SUMATERA BARAT', 'SUMATERA UTARA', 'KEPULAUAN RIAU', 'BANGKA BELITUNG',
+      'PAPUA BARAT DAYA', 'PAPUA PEGUNUNGAN', 'PAPUA SELATAN', 'PAPUA TENGAH', 'PAPUA BARAT',
+      'DI YOGYAKARTA', 'D.I. YOGYAKARTA', 'DAERAH ISTIMEWA YOGYAKARTA', 'YOGYAKARTA',
+      'DKI JAKARTA', 'D.K.I. JAKARTA', 'JAKARTA',
+      'JAWA TENGAH', 'JAWA BARAT', 'JAWA TIMUR', 'MALUKU UTARA',
+      'GORONTALO', 'BENGKULU', 'LAMPUNG', 'BANTEN', 'MALUKU', 'PAPUA', 'JAMBI', 'ACEH', 'RIAU', 'BALI'
     ];
+	
+	const PROVINSI_ALIAS_MAP = {
+      'JATENG': 'JAWA TENGAH',
+      'JABAR': 'JAWA BARAT',
+      'JATIM': 'JAWA TIMUR',
+      'DIY': 'DI YOGYAKARTA',
+      'D.I. YOGYAKARTA': 'DI YOGYAKARTA',
+      'DAERAH ISTIMEWA YOGYAKARTA': 'DI YOGYAKARTA',
+      'YOGYAKARTA': 'DI YOGYAKARTA',
+      'DKI': 'DKI JAKARTA',
+      'D.K.I. JAKARTA': 'DKI JAKARTA',
+      'JAKARTA': 'DKI JAKARTA',
+      'SUMUT': 'SUMATERA UTARA',
+      'SUMBAR': 'SUMATERA BARAT',
+      'SUMSEL': 'SUMATERA SELATAN',
+      'KEPRI': 'KEPULAUAN RIAU',
+      'BABEL': 'KEPULAUAN BANGKA BELITUNG',
+      'BANGKA BELITUNG': 'KEPULAUAN BANGKA BELITUNG',
+      'KALBAR': 'KALIMANTAN BARAT',
+      'KALTENG': 'KALIMANTAN TENGAH',
+      'KALSEL': 'KALIMANTAN SELATAN',
+      'KALTIM': 'KALIMANTAN TIMUR',
+      'KALUT': 'KALIMANTAN UTARA',
+      'SULUT': 'SULAWESI UTARA',
+      'SULTENG': 'SULAWESI TENGAH',
+      'SULSEL': 'SULAWESI SELATAN',
+      'SULTRA': 'SULAWESI TENGGARA',
+      'SULBAR': 'SULAWESI BARAT',
+      'NTB': 'NUSA TENGGARA BARAT',
+      'NTT': 'NUSA TENGGARA TIMUR',
+      'MALUT': 'MALUKU UTARA',
+      'PAPBAR': 'PAPUA BARAT'
+    };
+	
+	Object.assign(INDONESIA_REGION_MAP, {
+      'brebes': { provinsi: 'JAWA TENGAH', kodepos: '52212' },
+      'kersana': { provinsi: 'JAWA TENGAH', kodepos: '52264' },
+      'cikandang': { provinsi: 'JAWA TENGAH', kodepos: '52264' },
+      'mojogedang': { provinsi: 'JAWA TENGAH', kodepos: '57752' },
+      'sewurejo': { provinsi: 'JAWA TENGAH', kodepos: '57752' },
+      'banjarnegara': { provinsi: 'JAWA TENGAH', kodepos: '53411' },
+      'purbalingga': { provinsi: 'JAWA TENGAH', kodepos: '53311' },
+      'kebumen': { provinsi: 'JAWA TENGAH', kodepos: '54311' },
+      'purworejo': { provinsi: 'JAWA TENGAH', kodepos: '54111' },
+      'wonosobo': { provinsi: 'JAWA TENGAH', kodepos: '56311' },
+      'temanggung': { provinsi: 'JAWA TENGAH', kodepos: '56211' },
+      'kendal': { provinsi: 'JAWA TENGAH', kodepos: '51311' },
+      'batang': { provinsi: 'JAWA TENGAH', kodepos: '51211' },
+      'blora': { provinsi: 'JAWA TENGAH', kodepos: '58211' },
+      'rembang': { provinsi: 'JAWA TENGAH', kodepos: '59211' },
+      'demak': { provinsi: 'JAWA TENGAH', kodepos: '59511' },
+      'grobogan': { provinsi: 'JAWA TENGAH', kodepos: '58111' },
+      'purwodadi': { provinsi: 'JAWA TENGAH', kodepos: '58111' },
+      'salatiga': { provinsi: 'JAWA TENGAH', kodepos: '50711' }
+    });
 
     // Hitung kemiripan kata sederhana untuk koreksi typo (misal: "SUNGAI PAGI" -> "SUNGAI PAGU")
     function isSimilarRegionName(a, b) {
-      const s1 = String(a || '').toUpperCase().replace(/[^A-Z]/g, '');
-      const s2 = String(b || '').toUpperCase().replace(/[^A-Z]/g, '');
+      const s1 = String(a || '').toUpperCase().replace(/^(KABUPATEN|KAB|KOTA|KECAMATAN|KEC|DESA|KELURAHAN|KEL)\b\.?\s*/i, '').replace(/[^A-Z]/g, '');
+      const s2 = String(b || '').toUpperCase().replace(/^(KABUPATEN|KAB|KOTA|KECAMATAN|KEC|DESA|KELURAHAN|KEL)\b\.?\s*/i, '').replace(/[^A-Z]/g, '');
       if (!s1 || !s2) return false;
       if (s1 === s2 || s1.includes(s2) || s2.includes(s1)) return true;
       if (Math.abs(s1.length - s2.length) > 2) return false;
@@ -1793,8 +1881,7 @@
 
     async function autoCompleteAddressOnline(comp) {
       const myToken = ++addrLookupToken;
-      
-      // Kamus terjemahan/pemetaan nama provinsi dari Bahasa Inggris ke Bahasa Indonesia
+
       const PROVINCE_EN_TO_ID = {
         "Central Java": "JAWA TENGAH",
         "West Java": "JAWA BARAT",
@@ -1819,41 +1906,58 @@
       const normalizeProvinceName = (provStr) => {
         if (!provStr) return '';
         const clean = provStr.trim();
-        return PROVINCE_EN_TO_ID[clean] || clean.toUpperCase();
+        return PROVINCE_EN_TO_ID[clean] || PROVINSI_ALIAS_MAP[clean.toUpperCase()] || clean.toUpperCase();
       };
 
+      // Jangan cari online jika desa berisi nama jalan (Jl/Jalan)
+      const safeDesa = /^(JL|JLN|JALAN|GG|GANG|BLOK|PERUM|KOMP)\b/i.test(comp.desa || '') ? '' : (comp.desa || '');
+
       const queries = [
-        [comp.desa, comp.kabkota].filter(Boolean).join(' '),
-        [comp.desa, comp.kecamatan].filter(Boolean).join(' '),
-        comp.desa,
-        [comp.kecamatan, comp.kabkota].filter(Boolean).join(' ')
+        [safeDesa, comp.kecamatan, comp.kabkota].filter(Boolean).join(' '),
+        [safeDesa, comp.kecamatan].filter(Boolean).join(' '),
+        [safeDesa, comp.kabkota].filter(Boolean).join(' '),
+        [comp.kecamatan, comp.kabkota].filter(Boolean).join(' '),
+        safeDesa,
+        comp.kecamatan
       ].map(q => q.trim()).filter(q => q.length >= 3);
 
       for (const q of [...new Set(queries)]) {
         try {
-          // 1. Cari di API Kode Pos Indonesia
           const res = await fetch(`https://kodepos.vercel.app/search/?q=${encodeURIComponent(q)}`);
           if (res.ok) {
             const json = await res.json();
             const list = Array.isArray(json.data) ? json.data : [];
             if (list.length > 0) {
-              const match = list.find(item =>
-                comp.kabkota && isSimilarRegionName(item.regency || item.city, comp.kabkota)
-              ) || list[0];
+              // Cari hasil yang cocok dengan Kabupaten/Kota dan Kecamatan yang sudah ada (tidak boleh salah Kabupaten)
+              let match = null;
+              if (comp.kabkota && comp.kecamatan) {
+                match = list.find(item =>
+                  isSimilarRegionName(item.regency || item.city, comp.kabkota) &&
+                  isSimilarRegionName(item.subdistrict || item.district, comp.kecamatan)
+                );
+              }
+              if (!match && comp.kabkota) {
+                match = list.find(item => isSimilarRegionName(item.regency || item.city, comp.kabkota));
+              }
+              if (!match && comp.kecamatan && !comp.kabkota) {
+                match = list.find(item => isSimilarRegionName(item.subdistrict || item.district, comp.kecamatan));
+              }
+              if (!match && !comp.kabkota && !comp.kecamatan) {
+                match = list[0];
+              }
 
+              if (!match) continue;
               if (myToken !== addrLookupToken) return;
               const up = v => String(v || '').toUpperCase().trim();
 
               if (match.code || match.postal_code) comp.kodepos = String(match.code || match.postal_code);
               if (match.province && !comp.provinsi) comp.provinsi = normalizeProvinceName(match.province);
-              if (match.regency && !comp.kabkota) comp.kabkota = up(match.regency);
+              if ((match.regency || match.city) && !comp.kabkota) {
+                comp.kabkota = up(match.regency || match.city).replace(/^(KABUPATEN|KAB\.?|KOTA)\s+/i, '');
+              }
               if (match.village && !comp.desa) comp.desa = up(match.village);
-
-              if (match.subdistrict || match.district) {
-                const apiKec = up(match.subdistrict || match.district);
-                if (!comp.kecamatan || isSimilarRegionName(comp.kecamatan, apiKec)) {
-                  comp.kecamatan = apiKec;
-                }
+              if ((match.subdistrict || match.district) && !comp.kecamatan) {
+                comp.kecamatan = up(match.subdistrict || match.district);
               }
 
               populateAddressHelperInputs();
@@ -1864,9 +1968,9 @@
         } catch (_) {}
       }
 
-      // 2. Cadangan: OpenStreetMap Nominatim jika API pertama gagal
+      // Cadangan: OpenStreetMap Nominatim jika API pertama belum menemukan kode pos
       try {
-        const osmQuery = [comp.desa, comp.kecamatan, comp.kabkota, comp.provinsi].filter(Boolean).join(', ');
+        const osmQuery = [safeDesa, comp.kecamatan, comp.kabkota, comp.provinsi].filter(Boolean).join(', ');
         if (!osmQuery) return;
         const resOsm = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=id&limit=1&q=${encodeURIComponent(osmQuery)}`);
         if (resOsm.ok) {
@@ -1875,7 +1979,9 @@
             const a = osmData[0].address;
             if (a.postcode && !comp.kodepos) comp.kodepos = String(a.postcode).replace(/\D/g, '').slice(0, 5);
             if (a.state && !comp.provinsi) comp.provinsi = normalizeProvinceName(a.state);
-            if ((a.county || a.city) && !comp.kabkota) comp.kabkota = (a.county || a.city).toUpperCase().replace(/^KABUPATEN\s+/i, '');
+            if ((a.county || a.city) && !comp.kabkota) {
+              comp.kabkota = (a.county || a.city).toUpperCase().replace(/^(KABUPATEN|KAB\.?|KOTA)\s+/i, '');
+            }
             populateAddressHelperInputs();
             rebuildFormattedAddressForCurrentTemplate(false);
           }
@@ -1890,27 +1996,32 @@
         return;
       }
 
-      let text = rawAddr.replace(/\s+/g, ' ').trim();
+      let text = rawAddr
+        .replace(/\bINDONESIA\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      // 1. Ekstrak RT & RW (Mendukung format "002/003", "RT 02/03", "Rt.03/10", dll)
+      // 1. Ekstrak RT & RW (Mendukung "002/003", "RT 02/03", "Rt.03/10", "RT 002 RW 003", "RT.02/RW.03", dll)
       let rt = '', rw = '';
       const rtRwPatterns = [
-        /\b(?:RT\.?\s*)?(\d{1,3})\s*[\/\-]\s*(?:RW\.?\s*)?(\d{1,3})\b/i,
-        /\bRT\.?\s*:?\s*(\d{1,3})\s*(?:[,;]?\s*\/?\s*RW|\/)\s*\.?\s*:?\s*(\d{1,3})\b/i
+        /\bRT\.?\s*:?\s*(\d{1,3})\s*(?:[\/,\-\s]+)?\s*RW\.?\s*:?\s*(\d{1,3})\b/i,
+        /\bRT\.?\s*:?\s*(\d{1,3})\s*[\/\-]\s*(\d{1,3})\b/i,
+        /(?<!\b(?:no|nomor|blok|blk|km|kav)\.?\s*[a-z]?)\b(\d{1,3})\s*\/\s*(\d{1,3})\b/i
       ];
       for (const re of rtRwPatterns) {
         const m = text.match(re);
         if (m) {
-          rt = m[1]; rw = m[2];
-          text = text.replace(m[0], ' , ');
+          rt = m[1];
+          rw = m[2];
+          text = text.replace(m[0], ' | ');
           break;
         }
       }
       if (!rt && !rw) {
         const mRt = text.match(/\bRT\.?\s*:?\s*(\d{1,3})\b/i);
         const mRw = text.match(/\bRW\.?\s*:?\s*(\d{1,3})\b/i);
-        if (mRt) { rt = mRt[1]; text = text.replace(mRt[0], ' , '); }
-        if (mRw) { rw = mRw[1]; text = text.replace(mRw[0], ' , '); }
+        if (mRt) { rt = mRt[1]; text = text.replace(mRt[0], ' | '); }
+        if (mRw) { rw = mRw[1]; text = text.replace(mRw[0], ' | '); }
       }
 
       // 2. Ekstrak Kode Pos 5 digit jika tertulis di WA
@@ -1918,66 +2029,89 @@
       const zipMatch = text.match(/\b(\d{5})\b/);
       if (zipMatch) {
         kodepos = zipMatch[1];
-        text = text.replace(zipMatch[0], ' ');
+        text = text.replace(zipMatch[0], ' | ');
       }
 
-      // 3. Pecah per koma/titik koma atau spasi berlebih untuk mendeteksi label (Desa, Kec, Kab, Prov)
-      const segments = text.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-      let dusun = '', desa = '', kecamatan = '', kabkota = '', provinsi = '';
+      // 3. Ekstrak Provinsi berlabel ("Prov. Jawa Tengah") maupun tanpa label di akhir kalimat ("... Kab. Brebes Jawa Tengah")
+      let provinsi = '';
+      const mProvExplicit = text.match(/\b(?:provinsi|prov|propinsi|prop)(?:\.\s*|\s+):?\s*([a-zA-Z\s\.]+?)(?=$|[,;|]|\b(?:kabupaten|kab|kota|kecamatan|kec|desa|des|ds|kelurahan|kel)\b)/i);
+      if (mProvExplicit) {
+        const rawP = mProvExplicit[1].trim().toUpperCase();
+        provinsi = PROVINSI_ALIAS_MAP[rawP] || rawP;
+        text = text.replace(mProvExplicit[0], ' | ');
+      }
+      if (!provinsi) {
+        const allProvs = [...DAFTAR_PROVINSI_ID, ...Object.keys(PROVINSI_ALIAS_MAP)]
+          .sort((a, b) => b.length - a.length);
+        for (const pName of allProvs) {
+          const escP = pName.replace(/\./g, '\\.');
+          // Pastikan nama provinsi tidak didahului kata Jalan/Kota/Kab/Kec/Desa (misal "Kota Yogyakarta" atau "Jl. Sumatera")
+          const reProv = new RegExp(`(?<!\\b(?:jl|jln|jalan|gg|gang|desa|des|ds|kelurahan|kel|kecamatan|kec|kabupaten|kab|kota)\\.?\\s+)\\b(${escP})\\b`, 'i');
+          const mp = text.match(reProv);
+          if (mp) {
+            const upP = mp[1].toUpperCase().trim();
+            provinsi = PROVINSI_ALIAS_MAP[upP] || upP;
+            text = text.replace(mp[0], ' | ');
+            break;
+          }
+        }
+      }
+
+      // 4. Sisipkan pemisah '|' sebelum semua singkatan/label wilayah (mendukung kec., KEC., kec, KEC, Kec, kab., KAB., kab, ds., kel., dsn., jl., dll)
+      const LABEL_SPLIT_RE = /(^|[\s,;|]+)((?:kabupaten|kab\s*\/\s*kota|kab|kota|kodya|kecamatan|kec|kc|distrik|kelurahan|kel|kalurahan|kal|desa|des|ds|nagari|gampong|pekon|provinsi|prov|propinsi|prop|dusun|dsn|dukuh|dk|jalan|jln|jl|gang|gg|perumahan|perum|kompleks|komplek|komp|kampung|kp|lingkungan|lingk)(?:\.\s*|\s+):?\s*)(?=[a-zA-Z0-9])/gi;
+      text = text.replace(LABEL_SPLIT_RE, '$1 | $2');
+
+      const segments = text.split(/[,;|]+/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+      let dusun = '', desa = '', kecamatan = '', kabkota = '';
       const unlabeled = [];
 
-      segments.forEach(seg => {
-        let s = seg.replace(/\s+/g, ' ').trim();
+      const cleanRegionVal = (val) => String(val || '')
+        .replace(/^(?:kabupaten|kab\s*\/\s*kota|kab|kota|kodya|kecamatan|kec|kc|distrik|kelurahan|kel|kalurahan|kal|desa|des|ds|nagari|gampong|pekon|provinsi|prov|propinsi|prop|dusun|dsn|dukuh|dk)(?:\.\s*|\s+):?\s*/i, '')
+        .replace(/^[,\.\s:-]+|[,\.\s:-]+$/g, '')
+        .trim();
 
-        const STOP = '(?:desa|des|kelurahan|kel|nagari|kampung|kecamatan|kec|kabupaten|kab|kota|provinsi|prov|dusun|dsn|dukuh)';
-        const multiCheck = s.match(new RegExp('\\b' + STOP + '\\b', 'gi'));
-
-        if (multiCheck && multiCheck.length > 1) {
-          s.replace(new RegExp('\\b(' + STOP + ')\\b', 'gi'), ', $1')
-           .split(',').map(x => x.trim()).filter(Boolean)
-           .forEach(sub => segments.push(sub));
-          return;
-        }
-
-        const mDusun = s.match(/^(?:dusun|dsn|dukuh|jl|jalan|gg|gang|blok|perum|komp)\b\.?\s*:?\s*(.+)$/i);
-        const mDesa  = s.match(/^(?:desa|des|kelurahan|kel|nagari|kampung|gampong)\b\.?\s*:?\s*(.+)$/i);
-        const mKec   = s.match(/^(?:kecamatan|kec)\b\.?\s*:?\s*(.+)$/i);
-        const mKab   = s.match(/^(?:kabupaten|kab|kota)\b\.?\s*:?\s*(.+)$/i);
-        const mProv  = s.match(/^(?:provinsi|prov)\b\.?\s*:?\s*(.+)$/i);
+      segments.forEach(s => {
+        const mProv  = s.match(/^(?:provinsi|prov|propinsi|prop)(?:\.\s*|\s+):?\s*(.+)$/i);
+        const mKab   = s.match(/^(?:kabupaten|kab\s*\/\s*kota|kab|kota|kodya)(?:\.\s*|\s+):?\s*(.+)$/i);
+        const mKec   = s.match(/^(?:kecamatan|kec|kc|distrik)(?:\.\s*|\s+):?\s*(.+)$/i);
+        const mDesa  = s.match(/^(?:desa|des|ds|kelurahan|kel|kalurahan|kal|nagari|gampong|pekon)(?:\.\s*|\s+):?\s*(.+)$/i);
+        const mDusun = s.match(/^(?:dusun|dsn|dukuh|dk)(?:\.\s*|\s+):?\s*(.+)$/i);
+        const mJalan = s.match(/^(jalan|jln|jl|gang|gg|blok|blk|perumahan|perum|kompleks|komplek|komp|kampung|kp|lingkungan|lingk)(?:\.\s*|\s+):?\s*(.+)$/i);
 
         if (mProv) {
-          provinsi = mProv[1].trim();
+          const pVal = cleanRegionVal(mProv[1]).toUpperCase();
+          if (!provinsi) provinsi = PROVINSI_ALIAS_MAP[pVal] || pVal;
         } else if (mKab) {
-          kabkota = mKab[1].trim();
+          kabkota = cleanRegionVal(mKab[1]);
         } else if (mKec) {
-          kecamatan = mKec[1].trim();
+          kecamatan = cleanRegionVal(mKec[1]);
         } else if (mDesa) {
-          desa = mDesa[1].trim();
+          desa = cleanRegionVal(mDesa[1]);
         } else if (mDusun) {
-          dusun = seg.trim();
+          const dVal = cleanRegionVal(mDusun[1]);
+          dusun = dusun ? `${dusun} ${dVal}` : dVal;
+        } else if (mJalan) {
+          const rawPrefix = mJalan[1].toUpperCase();
+          const normPrefix = /^(JL|JLN|JALAN)$/.test(rawPrefix) ? 'JL.' : (/^(GG|GANG)$/.test(rawPrefix) ? 'GG.' : rawPrefix);
+          const jVal = `${normPrefix} ${mJalan[2].trim()}`;
+          dusun = dusun ? `${dusun} ${jVal}` : jVal;
         } else {
-          // Deteksi otomatis kata tanpa label eksplisit berdasarkan kata kunci wilayah umum
-          const upSeg = s.toUpperCase();
-          if (/^(KABUPATEN|KAB\.|KOTA)\s+/i.test(s)) {
-            kabkota = s.replace(/^(KABUPATEN|KAB\.|KOTA)\s+/i, '').trim();
-          } else if (/^(KECAMATAN|KEC\.)\s+/i.test(s)) {
-            kecamatan = s.replace(/^(KECAMATAN|KEC\.)\s+/i, '').trim();
-          } else if (/^(DESA|KELURAHAN|KEL\.)\s+/i.test(s)) {
-            desa = s.replace(/^(DESA|KELURAHAN|KEL\.)\s+/i, '').trim();
-          } else {
-            const matchedProv = DAFTAR_PROVINSI_ID.find(p => upSeg === p || upSeg.includes(p));
-            if (matchedProv && !provinsi) {
-              provinsi = matchedProv === 'JAKARTA' ? 'DKI JAKARTA' : matchedProv;
-            } else {
-              unlabeled.push(s);
-            }
-          }
+          unlabeled.push(s);
         }
       });
 
-      // 4. Alokasikan bagian sisa (unlabeled) secara berurutan jika tidak ada label teks
+      // 5. Alokasikan bagian tanpa label (contoh: "Plumbon Rt.03/10 Plumbon Mojolaban Sukoharjo")
       if (unlabeled.length > 0) {
         for (const item of unlabeled) {
+          const words = item.split(/\s+/).filter(Boolean);
+          // Jika segmen tanpa koma memiliki >= 3 kata dan desa/kec/kab masih kosong semua
+          if (words.length >= 3 && dusun && !desa && !kecamatan && !kabkota) {
+            desa = words[0];
+            kecamatan = words[1];
+            kabkota = words.slice(2).join(' ');
+            continue;
+          }
           if (!dusun) { dusun = item; continue; }
           if (!desa) { desa = item; continue; }
           if (!kecamatan) { kecamatan = item; continue; }
@@ -1986,12 +2120,14 @@
         }
       }
 
+      // Jangan pernah menyalin nama jalan (JL./GG./BLOK/PERUM) menjadi nama Desa
+      const isStreetName = /^(JL\.?|JLN\.?|JALAN|GG\.?|GANG|BLOK|PERUM|KOMP)\b/i.test(dusun);
       if (!dusun && desa) dusun = desa;
-      if (!desa && dusun) desa = dusun;
+      if (!desa && dusun && !isStreetName) desa = dusun;
 
-      // 5. Cek kamus lokal wilayah untuk melengkapi provinsi & kodepos jika kosong
+      // 6. Cek kamus lokal wilayah untuk melengkapi provinsi & kodepos jika kosong
       const wordHit = (needle, key) => new RegExp('(^|[^a-z])' + key + '([^a-z]|$)', 'i').test(needle);
-      for (const src of [kabkota, kecamatan, desa, text]) {
+      for (const src of [desa, kecamatan, kabkota, text]) {
         if (!src) continue;
         for (const [key, val] of Object.entries(INDONESIA_REGION_MAP)) {
           if (wordHit(src, key)) {
@@ -2002,7 +2138,7 @@
         }
       }
 
-      const up = v => (v || '').toUpperCase().trim();
+      const up = v => String(v || '').toUpperCase().trim();
       appState.addrComponents = {
         dusun: up(dusun),
         rt: rt ? pad3(rt) : '001',
@@ -2015,7 +2151,7 @@
       };
       appState.addrMissing = [];
 
-      // 6. Lengkapi Kode Pos & perbaiki typo secara online di latar belakang
+      // 7. Lengkapi Kode Pos secara online di latar belakang
       autoCompleteAddressOnline(appState.addrComponents);
     }
 
@@ -2123,11 +2259,12 @@
       exp = exp || officeLabel.exp || '';
       const J = (e.jenis || '').toUpperCase();
       const n = stripBankPrefix(e.nama).replace(/^PERMATA\s*BANK\s+/i, '').trim();
+      if (exp === 'C') return officeNameOnly(n); // Khusus BNI: buang KCP/KCU/embel-embel
       if (exp === 'B') {
         const core = officeCore(e.nama);
         return J === 'KC' ? `KC ${core}` : J === 'UNIT' ? `UNIT ${core}` : n;
       }
-      if ((J === 'OUTLET' || J === 'OUTLET SYARIAH') && (exp === 'C' || exp === 'F')) {
+      if ((J === 'OUTLET' || J === 'OUTLET SYARIAH') && exp === 'F') {
         const rawHint = `${appState.parsed.kantorCabangRaw || ''} ${appState.parsed.alamatUnitRaw || ''}`.toUpperCase();
         const m = rawHint.match(/\b(KCU|KCP|KC|KK)\b/);
         const prefix = m ? m[1] : 'KCP';
@@ -2234,7 +2371,10 @@
     function officeNameOnly(v) {
       let t = String(v || '').replace(/\s+/g, ' ').trim().toUpperCase();
       let prev;
-      do { prev = t; t = t.replace(/^(BANK\s+SYARIAH\s+INDONESIA|BSI|KANTOR\s+CABANG\s+PEMBANTU|KANTOR\s+CABANG|KANTOR\s+FUNGSIONAL\s+OPERASIONAL|KANTOR\s+KAS|KCU|KCP|KFO|KCI|KC|KK|UNIT|CABANG)\b[\s.\-:]*/, '').trim(); } while (t !== prev);
+      do {
+        prev = t;
+        t = t.replace(/^(PT\.?\s*)?(BANK\s+NEGARA\s+INDONESIA|BANK\s+SYARIAH\s+INDONESIA|BANK\s+BNI|BANK\s+BSI|BNI|BSI|KANTOR\s+CABANG\s+PEMBANTU|KANTOR\s+CABANG\s+UTAMA|KANTOR\s+CABANG|KANTOR\s+FUNGSIONAL\s+OPERASIONAL|KANTOR\s+KAS|OUTLET\s+SYARIAH|OUTLET|CAPEM|KANCA|KCU|KCP|KFO|KCI|KC|KK|UNIT|CABANG|CAB)\b[\s.\-:]*/, '').trim();
+      } while (t !== prev);
       return t;
     }
 
@@ -2259,7 +2399,7 @@
           t.pKanwil = r.kw ? kanwilLabel(r.kw, 'B') : '';
         } else if (r.main) {
           const lbl = officeLabel(r.main, exp);
-          t.p3 = exp === 'E' ? officeNameOnly(lbl) : (exp === 'A' ? lbl.toUpperCase() : lbl);
+          t.p3 = (exp === 'E' || exp === 'C') ? officeNameOnly(lbl) : (exp === 'A' ? lbl.toUpperCase() : lbl);
           t.pUnit = lbl;
           t.p2 = [r.main.alamat, r.main.kec ? `KEC. ${r.main.kec}` : '', r.main.kota, r.main.pos].filter(Boolean).join(', ').toUpperCase();
           t.pKanwil = r.kw ? kanwilLabel(r.kw, exp) : '';
@@ -2417,37 +2557,71 @@
     }
 
     function formatAddressForTemplate(exp, c) {
-      const dusun = (c.dusun || '').toUpperCase();
+      const stripAdminPrefix = (val, type) => {
+        let s = String(val || '').toUpperCase().trim();
+        if (type === 'kec') s = s.replace(/^(?:KECAMATAN|KEC|KC|DISTRIK)(?:\.\s*|\s+):?\s*/i, '');
+        if (type === 'desa') s = s.replace(/^(?:DESA|DES|DS|KELURAHAN|KEL|KALURAHAN|KAL|NAGARI|GAMPONG|PEKON)(?:\.\s*|\s+):?\s*/i, '');
+        if (type === 'kab') s = s.replace(/^(?:KABUPATEN|KAB\s*\/\s*KOTA|KAB|KOTA|KODYA)(?:\.\s*|\s+):?\s*/i, '');
+        if (type === 'dusun') s = s.replace(/^(?:DUSUN|DSN|DUKUH|DK)(?:\.\s*|\s+):?\s*/i, '');
+        return s.replace(/^[,\.\s:-]+|[,\.\s:-]+$/g, '').trim();
+      };
+
+      const dusun = stripAdminPrefix(c.dusun, 'dusun');
       const rt = c.rt ? pad3(c.rt) : '';
       const rw = c.rw ? pad3(c.rw) : '';
-      const desa = (c.desa || '').toUpperCase();
-      const kec = (c.kecamatan || '').toUpperCase();
-      const kab = (c.kabkota || '').toUpperCase();
-      const prov = (c.provinsi || '').toUpperCase();
-      const pos = (c.kodepos || '').trim();
+      const desa = stripAdminPrefix(c.desa, 'desa');
+      const kec = stripAdminPrefix(c.kecamatan, 'kec');
+      const kab = stripAdminPrefix(c.kabkota, 'kab');
+      const prov = String(c.provinsi || '').toUpperCase().trim();
+      const pos = String(c.kodepos || '').trim();
       const join = (arr, sep) => arr.filter(Boolean).join(sep);
 
       if (exp === 'A') {
+        // Bersihkan dusun/jalan dari sisa RT/RW atau label wilayah yang menempel
+        let dusunJalan = dusun
+          .replace(/\bRT\.?\s*\d{1,3}\s*(?:[\/,\-\s]+)?\s*RW\.?\s*\d{1,3}\b/gi, '')
+          .replace(/\b(?:DESA|DES|DS|KELURAHAN|KEL|KECAMATAN|KEC|KABUPATEN|KAB|KOTA)(?:\.\s*|\s+)\S+/gi, '')
+          .replace(/^[,\s-]+|[,\s-]+$/g, '')
+          .trim();
+
         const rtrw = (rt || rw) ? `RT ${rt || '001'} RW ${rw || '002'}` : '';
-        const dusunRtRw = join([dusun, rtrw], ' ');
+        const dusunRtRw = join([dusunJalan, rtrw], ' ');
         const kabPos = join([kab, pos], ' ');
-        
-        // Urutan persis seperti di gambar: Kecamatan -> Desa -> Dusun/RT/RW -> Kabupaten & Kode Pos -> INDONESIA
-        return join([kec, desa, dusunRtRw, kabPos, 'INDONESIA'], '\n');
+
+        // Urutan wajib khusus Bank BCA (5 Baris):
+        // 1. Kecamatan (Contoh: MOJOGEDANG / KERSANA)
+        // 2. Desa / Kelurahan (Contoh: SEWUREJO / CIKANDANG)
+        // 3. Dusun / Jalan / RT / RW (Contoh: GROBAGAN TEPUS RT 003 RW 010 / JL. WALISONGO RT 002 RW 003)
+        // 4. Kabupaten / Kota beserta Kode Pos (Contoh: KARANGANYAR 57752 / BREBES 52264)
+        // 5. INDONESIA
+        const rawLines = [kec, desa, dusunRtRw, kabPos, 'INDONESIA'].filter(Boolean);
+
+        // Cegah pengulangan baris yang persis sama
+        const uniqueLines = [];
+        rawLines.forEach(line => {
+          if (uniqueLines[uniqueLines.length - 1] !== line) {
+            uniqueLines.push(line);
+          }
+        });
+        return uniqueLines.join('\n');
       }
       if (exp === 'B') {
         const rtrw = (rt || rw) ? `RT ${rt || '001'}/RW ${rw || '002'}` : '';
-        const desaLabel = desa ? (/^(DESA|KEL|KELURAHAN)\b/i.test(desa) ? desa : `DESA ${desa}`) : '';
-        const kecLabel = kec ? (/^KEC(AMATAN)?\b/i.test(kec) ? kec : `KEC. ${kec}`) : '';
-        const kabLabel = kab ? (/^(KAB|KABUPATEN|KOTA)\b/i.test(kab) ? kab : `KAB. ${kab}`) : '';
+        const desaLabel = desa ? `DESA ${desa}` : '';
+        const kecLabel = kec ? `KEC. ${kec}` : '';
+        const kabLabel = kab ? `KAB. ${kab}` : '';
         const provPos = join([prov, pos], ' ');
         return join([dusun, rtrw, desaLabel, kecLabel, kabLabel, provPos], ', ');
       }
-      if (exp === 'C' || exp === 'E') {
+      if (exp === 'C') {
+        const kecLabel = kec ? `KEC. ${kec}` : '';
+        const kabLabel = kab ? `KAB. ${kab}` : '';
+        return join([join([dusun || desa, rt, rw], ' '), join([desa, kecLabel, kabLabel], ' '), prov], ', ');
+      }
+      if (exp === 'E') {
         return join([join([desa, rt, rw], ' '), join([desa, kec, kab], ' '), prov], ', ');
       }
       if (exp === 'F') {
-        // Format 3 baris sesuai TEMPPER.jpg (Contoh: JL.MAWAR MERAH 2 05/01 \n 61 PONDOK KOPI DUREN SAWIT \n JAKARTA TIMUR, WIL. 13460)
         const rt2 = c.rt ? pad2(parseInt(c.rt, 10) || 0) : '';
         const rw2 = c.rw ? pad2(parseInt(c.rw, 10) || 0) : '';
         const rtrwShort = (rt2 || rw2) ? `${rt2}/${rw2}` : '';
@@ -2476,8 +2650,8 @@
 
       appState.templatesData.A.p3 = withKcpPrefix(cabUpper);
       appState.templatesData.A.p4 = akun;
-      appState.templatesData.A.p5 = namaUpper; // Nama Pengguna (Baris pertama di atas alamat)
-      appState.templatesData.A.p6 = formatAddressForTemplate('A', c); // Alamat menurun ke bawah
+      appState.templatesData.A.p5 = namaUpper;
+      appState.templatesData.A.p6 = formatAddressForTemplate('A', c);
 
       appState.templatesData.B.p2 = matchBankBDatabase(p.alamatUnitRaw);
       appState.templatesData.B.p3 = cabUpper.startsWith('UNIT ') ? cabUpper : `UNIT ${cabUpper}`;
@@ -2485,7 +2659,7 @@
       appState.templatesData.B.p5 = namaUpper;
       appState.templatesData.B.p6 = formatAddressForTemplate('B', c);
 
-      appState.templatesData.C.p3 = withKcpPrefix(p.kantorCabangRaw);
+      appState.templatesData.C.p3 = officeNameOnly(p.kantorCabangRaw); // Khusus BNI: tanpa KCP/KCU
       appState.templatesData.C.p4 = akun;
       appState.templatesData.C.p5 = namaUpper;
       appState.templatesData.C.p6 = formatAddressForTemplate('C', c);
@@ -2503,7 +2677,7 @@
       appState.templatesData.F.p5 = namaUpper;
       appState.templatesData.F.p6 = formatAddressForTemplate('F', c);
 
-      syncOfficeMatches(); // timpa p3/p2/pUnit dengan hasil pencocokan database bila ada
+      syncOfficeMatches();
     }
 
     function populateAddressHelperInputs() {
@@ -2554,8 +2728,11 @@
       if (chev) chev.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 
-    function formatIDRNumber(num) {
-      return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+    function formatIDRNumber(num, withDecimals = true) {
+      return new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: withDecimals ? 2 : 0,
+        maximumFractionDigits: withDecimals ? 2 : 0
+      }).format(num);
     }
 
     function generateRandomFinancials(exp) {
@@ -2572,10 +2749,10 @@
         const pengeluaran = randStep(1200000, Math.max(1500000, Math.min(maxPengeluaran, 38000000)), 25000);
         const saldoAkhir = Math.max(550000, saldoAwal + pemasukan - pengeluaran);
 
-        appState.templatesData.C.saldoAwal = formatIDRNumber(saldoAwal);
-        appState.templatesData.C.totalPemasukan = formatIDRNumber(pemasukan);
-        appState.templatesData.C.totalPengeluaran = formatIDRNumber(pengeluaran);
-        appState.templatesData.C.saldoAkhir = formatIDRNumber(saldoAkhir);
+        appState.templatesData.C.saldoAwal = formatIDRNumber(saldoAwal, false);
+        appState.templatesData.C.totalPemasukan = formatIDRNumber(pemasukan, false);
+        appState.templatesData.C.totalPengeluaran = formatIDRNumber(pengeluaran, false);
+        appState.templatesData.C.saldoAkhir = formatIDRNumber(saldoAkhir, false);
       } else if (exp === 'D') {
         const saldoAwal = randStep(800000, 18000000, 25000);
         const danaMasuk = randStep(4000000, 52000000, 50000);
@@ -3268,7 +3445,7 @@
           contentEl.innerHTML = `<div class="flex flex-col justify-between w-full h-full"><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5"><span>${escapeHtml(data.saldoAwal)}</span><span>IDR</span></div><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5 text-emerald-600"><span>+${escapeHtml(data.danaMasuk)}</span><span>IDR</span></div><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5"><span>-${escapeHtml(data.danaKeluar)}</span><span>IDR</span></div><div style="height:${Math.round((box.fontSize || 12) * 1.3)}px" class="flex items-center justify-end gap-1.5 font-semibold"><span>${escapeHtml(data.saldoAkhir)}</span><span>IDR</span></div></div>`;
         } else {
           contentEl.style.whiteSpace = ((exp === 'E' && box.id === 'p3') || (exp === 'C' && box.id === 'mA')) ? 'nowrap' : 'pre-wrap'; // nama cabang BSI tidak turun baris
-          contentEl.style.lineHeight = exp === 'A' && box.id === 'p6' ? '1.08' : '1.25';
+          contentEl.style.lineHeight = exp === 'A' && box.id === 'p6' ? '1.5' : '1.25';
           contentEl.textContent = getDisplayText(exp, box);
           contentEl.addEventListener('dblclick', e => {
             e.stopPropagation();
