@@ -52,10 +52,15 @@
     /* Shape kotak: selalu di belakang semua teks (z-index lebih rendah dari .canvas-field-box biasa = 20) */
     .canvas-field-box.type-shape,
     .canvas-field-box.type-shape.selected-box { z-index: 6 !important; }
-    .show-guides .canvas-field-box.type-shape { border: 1px dashed rgba(100,116,139,.6); }
+    .canvas-field-box.type-shape,
+    .show-guides .canvas-field-box.type-shape,
+    .canvas-field-box.type-shape.selected-box { border: none !important; outline: none !important; box-shadow: none !important; }
     .show-guides .canvas-field-box.type-custom { border: 1.5px dashed rgba(5,150,105,.75); background-color: rgba(209,250,229,.2); }
-    .canvas-field-box.type-shape.selected-box { border: 2px solid #4f46e5 !important; }
     .export-clean-mode .canvas-field-box.type-shape { border: none !important; }
+	.canvas-field-box.type-image,
+    .canvas-field-box.type-image.selected-box { z-index: 15 !important; }
+    .show-guides .canvas-field-box.type-image { border: 1.5px dashed rgba(14,165,233,.8); }
+    .type-image .field-badge { background-color: #0ea5e9; }
     .guides-idle .canvas-field-box.type-shape { border-color: transparent !important; }
 
     /* Interactive Overlay Box on Statement Canvas */
@@ -210,6 +215,38 @@
     .guides-idle .snap-line-x,
     .guides-idle .snap-line-y {
       display: none !important;
+    }
+	
+	/* Garis Bantu Manual (Ruler Guides) */
+    .user-guide-line {
+      position: absolute;
+      z-index: 45;
+      background-color: #06b6d4;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.5);
+      touch-action: none;
+    }
+    .user-guide-line.guide-h {
+      left: 0; right: 0; height: 2px; cursor: ns-resize;
+    }
+    .user-guide-line.guide-h::before {
+      content: ''; position: absolute; left: 0; right: 0; top: -8px; bottom: -8px;
+    }
+    .user-guide-line.guide-v {
+      top: 0; bottom: 0; width: 2px; cursor: ew-resize;
+    }
+    .user-guide-line.guide-v::before {
+      content: ''; position: absolute; top: 0; bottom: 0; left: -8px; right: -8px;
+    }
+    .user-guide-line:hover, .user-guide-line.dragging-guide {
+      background-color: #ec4899;
+    }
+    .export-clean-mode .user-guide-line,
+    .guides-idle .user-guide-line {
+      display: none !important;
+    }
+    #previewOuterWrapper.is-panning,
+    #previewOuterWrapper.is-panning #statementCanvas {
+      cursor: grabbing !important;
     }
 
     /* Kanvas besar (mis. 2217px) tidak boleh melebarkan halaman: preview selalu diskalakan agar muat */
@@ -517,11 +554,22 @@
               <i data-lucide="frame" class="w-3.5 h-3.5"></i>
               <span>Kotak Panduan</span>
             </button>
+			
+			<button onclick="toggleBriExtraOverlay()" id="btnToggleBriOverlay" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition bg-sky-50 text-sky-700 border-sky-200" title="Munculkan / Sembunyikan Layer Gambar Tambahan BRI">
+              <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+              <span id="briOverlayBtnText">Layer BRI: ON</span>
+            </button>
 
             <button onclick="resetCurrentTemplateLayout()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition" title="Reset Posisi">
               <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">Reset Posisi</span>
             </button>
+			
+			<div class="inline-flex rounded-xl border border-cyan-200 bg-cyan-50/70 p-0.5 gap-0.5">
+              <button type="button" onclick="addUserGuide('h')" class="px-2 py-1 rounded-lg text-[11px] font-semibold text-cyan-800 hover:bg-white transition" title="Tambah Garis Bantu Horizontal">+ Garis H</button>
+              <button type="button" onclick="addUserGuide('v')" class="px-2 py-1 rounded-lg text-[11px] font-semibold text-cyan-800 hover:bg-white transition" title="Tambah Garis Bantu Vertikal">+ Garis V</button>
+              <button type="button" onclick="clearUserGuides()" class="px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 hover:bg-white transition" title="Hapus Semua Garis Bantu">Hapus Garis</button>
+            </div>
           </div>
 
           <div class="flex items-center gap-2">
@@ -676,9 +724,14 @@
             >
               <div id="snapLineX" class="snap-line-x"></div>
               <div id="snapLineY" class="snap-line-y"></div>
+			  
+			  <div id="userGuidesLayer" class="absolute inset-0 w-full h-full pointer-events-none z-40"></div>
 
               <div id="templateBackgroundLayer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+              <div id="templateBackgroundLayer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></div>
+              <div id="briExtraLayer" class="absolute inset-0 w-full h-full pointer-events-none z-[3]"></div>
               <div id="templateOverlaysLayer" class="absolute inset-0 w-full h-full z-20"></div>
+			  <div id="templateOverlaysLayer" class="absolute inset-0 w-full h-full z-20"></div>
             </div>
           </div>
         </div>
@@ -1059,10 +1112,47 @@
     // Contoh: A: 'https://raw.githubusercontent.com/NAMAKAMU/NAMAREPO/main/templates/bank-a.png'
     // (link halaman GitHub biasa yang memuat /blob/ juga otomatis diubah menjadi link raw).
     // Kosongkan salah satu bank untuk memakai folder / nama file di bawah.
+	// >>> TEMPEL LINK GAMBAR LAYER TAMBAHAN BRI DI SINI <<<
+    const BRI_EXTRA_OVERLAY_URL = 'https://marketingexata.github.io/statement/template%20statement/bris.png';
+
+    function renderBriExtraOverlay() {
+      const layer = document.getElementById('briExtraLayer');
+      const btn = document.getElementById('btnToggleBriOverlay');
+      const btnTxt = document.getElementById('briOverlayBtnText');
+      if (!layer) return;
+
+      if (appState.showBriOverlay === undefined) appState.showBriOverlay = true; // Default muncul
+      const isBRI = appState.activeExpedition === 'B';
+
+      if (btn) {
+        btn.classList.toggle('hidden', !isBRI);
+        btn.classList.toggle('inline-flex', isBRI);
+        btn.className = `${isBRI ? 'inline-flex' : 'hidden'} items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${appState.showBriOverlay ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`;
+      }
+      if (btnTxt) btnTxt.textContent = appState.showBriOverlay ? 'Layer BRI: ON' : 'Layer BRI: OFF';
+
+      const url = (appState.briOverlayUrl || BRI_EXTRA_OVERLAY_URL || '').trim();
+      if (!isBRI || !appState.showBriOverlay || !url) {
+        layer.innerHTML = '';
+        return;
+      }
+      const normUrl = normalizeGithubUrl(url);
+      const crossAttr = /^https?:\/\//i.test(normUrl) ? ' crossorigin="anonymous"' : '';
+      layer.innerHTML = `<img src="${escapeHtml(normUrl)}"${crossAttr} alt="Layer Tambahan BRI" class="w-full h-full object-fill pointer-events-none select-none" onerror="this.style.display='none'" />`;
+    }
+
+    function toggleBriExtraOverlay() {
+      if (appState.showBriOverlay === undefined) appState.showBriOverlay = true;
+      appState.showBriOverlay = !appState.showBriOverlay;
+      renderBriExtraOverlay();
+      saveStateToStorage();
+      showToast(appState.showBriOverlay ? 'Layer gambar BRI dimunculkan' : 'Layer gambar BRI disembunyikan', 'info');
+    }
+	
     const TEMPLATE_DEFAULT_LINKS = {
       A: 'https://marketingexata.github.io/statement/template%20statement/bankA2.jpg',
       B: 'https://marketingexata.github.io/statement/template%20statement/bankB.png',
-      C: 'https://marketingexata.github.io/statement/template%20statement/bankC2.jpg',
+      C: 'https://marketingexata.github.io/statement/template%20statement/bankC3.jpg',
       D: 'https://marketingexata.github.io/statement/template%20statement/bankD2.jpg',
       E: 'https://marketingexata.github.io/statement/template%20statement/bankE2.jpg',
 	  F: 'https://marketingexata.github.io/statement/template%20statement/bankF.jpg'
@@ -1246,8 +1336,10 @@
             mA: { id: 'mA', badge: 'A • Periode', type: 'manual', x: 2035, y: 194, w: 345, h: 55, fontSize: 28.7, align: 'left', bold: false },
             p5: { id: 'p5', badge: '5 • Nama Pengguna', type: 'auto', x: 88, y: 277, w: 660, h: 55, fontSize: 36, align: 'left', bold: true },
             p6: { id: 'p6', badge: '6 • Alamat Lengkap', type: 'auto', x: 88, y: 360, w: 936, h: 125, fontSize: 33, align: 'left', bold: false },
-            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 2129, y: 356, w: 332, h: 50, fontSize: 30, align: 'left', bold: true },
+            p4: { id: 'p4', badge: '4 • No. Rekening', type: 'auto', x: 2129, y: 356, w: 332, h: 50, fontSize: 39, align: 'left', bold: true },
+            imgKC: { id: 'imgKC', badge: 'Label • Kantor Cabang', type: 'image', src: 'https://marketingexata.github.io/statement/template%20statement/kantorcabang.jpg', x: 1215, y: 416, w: 246, h: 51 },
             p3: { id: 'p3', badge: '3 • Kantor Cabang', type: 'auto', x: 1466, y: 417, w: 316, h: 49, fontSize: 30, align: 'left', bold: false },
+            imgMU: { id: 'imgMU', badge: 'Label • Mata Uang', type: 'image', src: 'https://marketingexata.github.io/statement/template%20statement/matauang.jpg', x: 1800, y: 416, w: 280, h: 51 },
             mB: { id: 'mB', badge: 'B • Ringkasan Saldo (4 Kolom)', type: 'manual', x: 95, y: 612, w: 2294, h: 65, fontSize: 36, align: 'center', bold: true }
           }
         },
@@ -1520,7 +1612,8 @@
           if (!appState.bcaLayoutV2) { appState.layouts.A = normalizeLayouts({ A: getBaseLayouts().A }).A; appState.bcaLayoutV2 = true; }
           if (!appState.briLayoutV2) { appState.layouts.B = normalizeLayouts({ B: getBaseLayouts().B }).B; appState.briLayoutV2 = true; }
           if (!appState.mandiriLayoutV2) { appState.layouts.D = normalizeLayouts({ D: getBaseLayouts().D }).D; appState.mandiriLayoutV2 = true; }
-          if (!appState.bniLayoutV4) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV4 = true; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
+          if (!appState.bniLayoutV5) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV5 = true; }
+		  if (!appState.bniLayoutV4) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV4 = true; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
           if (!appState.bniLayoutV2) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
           if (!appState.bsiLayoutV2) { appState.layouts.E = normalizeLayouts({ E: getBaseLayouts().E }).E; appState.bsiLayoutV2 = true; appState.bsiLayoutV3 = true; }
           if (!appState.permataLayoutV1 || !appState.layouts.F) {
@@ -2314,8 +2407,12 @@
         return join([kec, rtrw, desa, join([kab, pos], ' '), 'INDONESIA'], '\n');
       }
       if (exp === 'B') {
-        const rtrw = (rt || rw) ? `Rt.${rt}/${rw}` : '';
-        return join([dusun, rtrw, join([desa, kec], ' '), kab], ', ');
+        const rtrw = (rt || rw) ? `RT ${rt || '001'}/RW ${rw || '002'}` : '';
+        const desaLabel = desa ? (/^(DESA|KEL|KELURAHAN)\b/i.test(desa) ? desa : `DESA ${desa}`) : '';
+        const kecLabel = kec ? (/^KEC(AMATAN)?\b/i.test(kec) ? kec : `KEC. ${kec}`) : '';
+        const kabLabel = kab ? (/^(KAB|KABUPATEN|KOTA)\b/i.test(kab) ? kab : `KAB. ${kab}`) : '';
+        const provPos = join([prov, pos], ' ');
+        return join([dusun, rtrw, desaLabel, kecLabel, kabLabel, provPos], ', ');
       }
       if (exp === 'C' || exp === 'E') {
         return join([join([desa, rt, rw], ' '), join([desa, kec, kab], ' '), prov], ', ');
@@ -3068,12 +3165,32 @@
 
       applyBgAdjust();
       syncBgAdjustUI();
+      renderBriExtraOverlay();
 
       overlaysLayer.innerHTML = '';
       const fontClass = `font-bank-${exp}`;
       const effBlur = getEffectiveBlur(exp);
 
       Object.values(layout.boxes).forEach(box => {
+		if (box.type === 'image') {
+          const imgBoxEl = document.createElement('div');
+          imgBoxEl.className = `canvas-field-box type-image ${appState.selectedBoxId === box.id ? 'selected-box' : ''}`;
+          imgBoxEl.dataset.boxId = box.id;
+          imgBoxEl.style.left = `${box.x}px`; imgBoxEl.style.top = `${box.y}px`;
+          imgBoxEl.style.width = `${box.w}px`; imgBoxEl.style.height = `${box.h}px`;
+          const ib = document.createElement('div'); ib.className = 'field-badge'; ib.textContent = box.badge || 'Gambar'; imgBoxEl.appendChild(ib);
+          const imgEl = document.createElement('img');
+          imgEl.src = box.src;
+          imgEl.crossOrigin = 'anonymous';
+          imgEl.className = 'w-full h-full object-fill pointer-events-none select-none';
+          const effB = getEffectiveBlur(exp);
+          if (effB > 0) imgEl.style.filter = `blur(${effB}px)`;
+          imgBoxEl.appendChild(imgEl);
+          attachBoxHandles(imgBoxEl, box);
+          overlaysLayer.appendChild(imgBoxEl);
+          return;
+        }
+	  
         if (box.type === 'shape') {
           const shEl = document.createElement('div');
           shEl.className = `canvas-field-box type-shape ${appState.selectedBoxId === box.id ? 'selected-box' : ''}`;
@@ -3149,6 +3266,9 @@
 
         overlaysLayer.appendChild(boxEl);
       });
+	  
+	  
+	  renderUserGuides();
 
       updateSelectedBoxToolbar();
       updateCanvasResponsiveScale();
@@ -3249,6 +3369,21 @@
             if (Math.abs(newY - other.y) <= SNAP_THRESHOLD) {
               newY = other.y;
               if (snapLineX) { snapLineX.style.top = `${newY}px`; snapLineX.style.display = 'block'; }
+            }
+          });
+		  
+		  // Snap ke Garis Bantu Manual (Kiri, Tengah, Kanan & Atas, Tengah, Bawah kotak)
+          const guides = (appState.userGuides && appState.userGuides[exp]) || [];
+          const GUIDE_SNAP = Math.max(4, Math.round((layout.canvasWidth || 900) * 0.004));
+          guides.forEach(g => {
+            if (g.type === 'v') {
+              if (Math.abs(newX - g.pos) <= GUIDE_SNAP) { newX = g.pos; if (snapLineY) { snapLineY.style.left = `${g.pos}px`; snapLineY.style.display = 'block'; } }
+              else if (Math.abs((newX + box.w / 2) - g.pos) <= GUIDE_SNAP) { newX = roundHalf(g.pos - box.w / 2); if (snapLineY) { snapLineY.style.left = `${g.pos}px`; snapLineY.style.display = 'block'; } }
+              else if (Math.abs((newX + box.w) - g.pos) <= GUIDE_SNAP) { newX = g.pos - box.w; if (snapLineY) { snapLineY.style.left = `${g.pos}px`; snapLineY.style.display = 'block'; } }
+            } else if (g.type === 'h') {
+              if (Math.abs(newY - g.pos) <= GUIDE_SNAP) { newY = g.pos; if (snapLineX) { snapLineX.style.top = `${g.pos}px`; snapLineX.style.display = 'block'; } }
+              else if (Math.abs((newY + box.h / 2) - g.pos) <= GUIDE_SNAP) { newY = roundHalf(g.pos - box.h / 2); if (snapLineX) { snapLineX.style.top = `${g.pos}px`; snapLineX.style.display = 'block'; } }
+              else if (Math.abs((newY + box.h) - g.pos) <= GUIDE_SNAP) { newY = g.pos - box.h; if (snapLineX) { snapLineX.style.top = `${g.pos}px`; snapLineX.style.display = 'block'; } }
             }
           });
         }
@@ -3393,7 +3528,7 @@
       const exp = appState.activeExpedition;
       const box = (appState.layouts[exp] || {}).boxes?.[appState.selectedBoxId];
       const show = (id, on) => { const el = document.getElementById(id); if (el) { el.classList.toggle('hidden', !on); el.classList.toggle('flex', !!on); } };
-      const isText = !!box && box.type !== 'shape';
+      const isText = !!box && box.type !== 'shape' && box.type !== 'image';
       const isShape = !!box && box.type === 'shape';
       show('selectedBoxControls', isText);
       show('selectedShapeControls', isShape);
@@ -3609,11 +3744,20 @@
       }
 
       const finalScale = baseScale * userZoomMultiplier;
-      scaleContainer.style.transformOrigin = 'top left';
-      scaleContainer.style.transform = `scale(${finalScale})`;
-      scaleContainer.style.width = `${Math.round(logicalWidth * finalScale)}px`;
-      scaleContainer.style.height = `${Math.round(logicalHeight * finalScale)}px`;
-      outer.style.overflow = userZoomMultiplier > 1 ? 'auto' : 'hidden';
+
+      // Kunci ukuran kotak bingkai luar (outer) sebesar ukuran fit 100% (baseScale) agar tidak pernah membesar/berubah bentuk
+      const lockedBoxWidth = Math.round(logicalWidth * baseScale);
+      const lockedBoxHeight = Math.round(logicalHeight * baseScale);
+      outer.style.height = `${lockedBoxHeight + 8}px`;
+      outer.style.overflow = 'hidden';
+
+      scaleContainer.style.width = `${lockedBoxWidth}px`;
+      scaleContainer.style.height = `${lockedBoxHeight}px`;
+      scaleContainer.style.transformOrigin = 'center center';
+      scaleContainer.style.transform = `scale(${userZoomMultiplier})`;
+
+      canvasEl.style.transformOrigin = 'top left';
+      canvasEl.style.transform = `scale(${baseScale})`;
 
       if (indicator) {
         indicator.textContent = `Zoom: ${Math.round(userZoomMultiplier * 100)}% (Skala ${Math.round(finalScale * 100)}%)`;
@@ -3788,7 +3932,7 @@
       clonedCanvasEl.style.boxShadow = 'none';
 
       clonedCanvasEl.querySelectorAll('.selected-box').forEach(el => el.classList.remove('selected-box'));
-      clonedCanvasEl.querySelectorAll('.field-badge, .resize-handle, .snap-line-x, .snap-line-y').forEach(el => el.remove());
+      clonedCanvasEl.querySelectorAll('.field-badge, .resize-handle, .snap-line-x, .snap-line-y, .user-guide-line').forEach(el => el.remove());
 
       exportHost.appendChild(clonedCanvasEl);
       document.body.appendChild(exportHost);
@@ -4408,6 +4552,190 @@
           e.preventDefault(); redoCanvasAction();
         }
       }
+    });
+	
+	/*************************************************************************
+     * GARIS BANTU MANUAL (SMOOTH 60FPS + SNAP) & PANNING PREVIEW (PC / HP)
+     *************************************************************************/
+    function getActiveUserGuides() {
+      if (!appState.userGuides) appState.userGuides = {};
+      const exp = appState.activeExpedition;
+      if (!Array.isArray(appState.userGuides[exp])) appState.userGuides[exp] = [];
+      return appState.userGuides[exp];
+    }
+
+    function addUserGuide(type) {
+      const exp = appState.activeExpedition;
+      const layout = appState.layouts[exp];
+      const guides = getActiveUserGuides();
+      const offset = (guides.length % 5) * Math.round((type === 'h' ? layout.canvasHeight : (layout.canvasWidth || 900)) * 0.04);
+      const center = type === 'h' ? Math.round(layout.canvasHeight / 2) + offset : Math.round((layout.canvasWidth || 900) / 2) + offset;
+      guides.push({ id: 'ug_' + Date.now().toString(36), type, pos: center });
+      setPreviewGuidesActive(true);
+      renderUserGuides();
+      saveStateToStorage();
+      showToast(`Garis bantu ${type === 'h' ? 'Horizontal' : 'Vertikal'} ditambahkan (klik 2x garis untuk hapus satuan)`, 'info');
+    }
+
+    function clearUserGuides() {
+      const exp = appState.activeExpedition;
+      if (!appState.userGuides || !appState.userGuides[exp] || !appState.userGuides[exp].length) return;
+      appState.userGuides[exp] = [];
+      renderUserGuides();
+      saveStateToStorage();
+      showToast('Semua garis bantu dihapus', 'info');
+    }
+
+    function renderUserGuides() {
+      const layer = document.getElementById('userGuidesLayer');
+      if (!layer) return;
+      layer.innerHTML = '';
+      const guides = getActiveUserGuides();
+      guides.forEach(g => {
+        const el = document.createElement('div');
+        el.className = `user-guide-line guide-${g.type} pointer-events-auto`;
+        el.dataset.guideId = g.id;
+        if (g.type === 'h') el.style.top = `${g.pos}px`;
+        else el.style.left = `${g.pos}px`;
+
+        el.addEventListener('mousedown', e => startGuideDrag(e, g.id));
+        el.addEventListener('touchstart', e => startGuideDrag(e, g.id), { passive: false });
+        el.addEventListener('dblclick', e => {
+          e.stopPropagation();
+          const list = getActiveUserGuides();
+          appState.userGuides[appState.activeExpedition] = list.filter(x => x.id !== g.id);
+          renderUserGuides();
+          saveStateToStorage();
+        });
+        layer.appendChild(el);
+      });
+    }
+
+    let guideDragState = null;
+
+    function startGuideDrag(e, guideId) {
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+      const guides = getActiveUserGuides();
+      const g = guides.find(x => x.id === guideId);
+      if (!g) return;
+      const pt = getClientXY(e);
+      const domEl = document.querySelector(`.user-guide-line[data-guide-id="${guideId}"]`);
+      if (domEl) domEl.classList.add('dragging-guide');
+
+      guideDragState = {
+        guide: g,
+        domEl,
+        startX: pt.x,
+        startY: pt.y,
+        origPos: g.pos,
+        scale: getCurrentCanvasScale()
+      };
+      window.addEventListener('mousemove', onGuideDragMove);
+      window.addEventListener('mouseup', onGuideDragEnd);
+      window.addEventListener('touchmove', onGuideDragMove, { passive: false });
+      window.addEventListener('touchend', onGuideDragEnd);
+    }
+
+    function onGuideDragMove(e) {
+      if (!guideDragState) return;
+      if (e.cancelable) e.preventDefault();
+      const pt = getClientXY(e);
+      const layout = appState.layouts[appState.activeExpedition];
+      const g = guideDragState.guide;
+      const delta = g.type === 'h'
+        ? (pt.y - guideDragState.startY) / guideDragState.scale
+        : (pt.x - guideDragState.startX) / guideDragState.scale;
+      const maxPos = g.type === 'h' ? layout.canvasHeight : (layout.canvasWidth || 900);
+      let newPos = Math.max(0, Math.min(maxPos, Math.round((guideDragState.origPos + delta) * 2) / 2));
+
+      // Garis bantu ikut snap halus ke tepi kotak teks saat digeser mendekati teks
+      if (appState.snapEnabled) {
+        const SNAP_TOL = Math.max(3, Math.round((layout.canvasWidth || 900) * 0.003));
+        Object.values(layout.boxes).forEach(b => {
+          const edges = g.type === 'h' ? [b.y, b.y + b.h / 2, b.y + b.h] : [b.x, b.x + b.w / 2, b.x + b.w];
+          edges.forEach(edge => { if (Math.abs(newPos - edge) <= SNAP_TOL) newPos = edge; });
+        });
+      }
+
+      g.pos = newPos;
+      if (guideDragState.domEl) {
+        if (g.type === 'h') guideDragState.domEl.style.top = `${newPos}px`;
+        else guideDragState.domEl.style.left = `${newPos}px`;
+      }
+    }
+
+    function onGuideDragEnd() {
+      if (!guideDragState) return;
+      if (guideDragState.domEl) guideDragState.domEl.classList.remove('dragging-guide');
+      guideDragState = null;
+      window.removeEventListener('mousemove', onGuideDragMove);
+      window.removeEventListener('mouseup', onGuideDragEnd);
+      window.removeEventListener('touchmove', onGuideDragMove);
+      window.removeEventListener('touchend', onGuideDragEnd);
+      saveStateToStorage();
+    }
+
+    // Panning Preview (Geser kanvas saat tahan klik kiri / 1 jari di area kosong)
+    let panPreviewState = null;
+    let previewOffset = { x: 0, y: 0 };
+
+    // Bungkus resetPreviewZoom agar ikut mereset posisi geser ke tengah
+    const _origResetPreviewZoom = resetPreviewZoom;
+    resetPreviewZoom = function() {
+      previewOffset = { x: 0, y: 0 };
+      const sc = document.getElementById('previewScaleContainer');
+      if (sc) sc.style.translate = '0px 0px';
+      _origResetPreviewZoom();
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const outer = document.getElementById('previewOuterWrapper');
+      const scaleContainer = document.getElementById('previewScaleContainer');
+      if (!outer || !scaleContainer) return;
+
+      const startPan = (e) => {
+        if (e.touches && e.touches.length > 1) return;
+        if (e.type === 'mousedown' && e.button !== 0) return;
+        // Jangan aktifkan pan jika user mengeklik kotak teks, handle resize, atau garis bantu
+        if (e.target.closest('.canvas-field-box, .resize-handle, .user-guide-line, button, input, select')) return;
+
+        const pt = getClientXY(e);
+        panPreviewState = {
+          startX: pt.x,
+          startY: pt.y,
+          origX: previewOffset.x,
+          origY: previewOffset.y
+        };
+        outer.classList.add('is-panning');
+        window.addEventListener('mousemove', movePan);
+        window.addEventListener('mouseup', endPan);
+        window.addEventListener('touchmove', movePan, { passive: false });
+        window.addEventListener('touchend', endPan);
+      };
+
+      const movePan = (e) => {
+        if (!panPreviewState) return;
+        if (e.touches && e.touches.length > 1) { endPan(); return; }
+        if (e.cancelable) e.preventDefault();
+        const pt = getClientXY(e);
+        previewOffset.x = panPreviewState.origX + (pt.x - panPreviewState.startX);
+        previewOffset.y = panPreviewState.origY + (pt.y - panPreviewState.startY);
+        scaleContainer.style.translate = `${Math.round(previewOffset.x)}px ${Math.round(previewOffset.y)}px`;
+      };
+
+      const endPan = () => {
+        if (!panPreviewState) return;
+        panPreviewState = null;
+        outer.classList.remove('is-panning');
+        window.removeEventListener('mousemove', movePan);
+        window.removeEventListener('mouseup', endPan);
+        window.removeEventListener('touchmove', movePan);
+        window.removeEventListener('touchend', endPan);
+      };
+
+      outer.addEventListener('mousedown', startPan);
+      outer.addEventListener('touchstart', startPan, { passive: true });
     });
 
     window.addEventListener('resize', () => { updateCanvasResponsiveScale(); });
