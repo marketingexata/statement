@@ -1109,7 +1109,7 @@
     // (link halaman GitHub biasa yang memuat /blob/ juga otomatis diubah menjadi link raw).
     // Kosongkan salah satu bank untuk memakai folder / nama file di bawah.
 	// >>> TEMPEL LINK GAMBAR LAYER TAMBAHAN BRI DI SINI <<<
-    const BRI_EXTRA_OVERLAY_URL = 'https://marketingexata.github.io/statement/template%20statement/bris.png';
+    const BRI_EXTRA_OVERLAY_URL = 'https://marketingexata.github.io/statement/template%20statement/bris2.png';
 
     function renderBriExtraOverlay() {
       const layer = document.getElementById('briExtraLayer');
@@ -2428,8 +2428,12 @@
       const join = (arr, sep) => arr.filter(Boolean).join(sep);
 
       if (exp === 'A') {
-        const rtrw = join([rt && `RT ${rt}`, rw && `RW ${rw}`, prov], ' ');
-        return join([kec, rtrw, desa, join([kab, pos], ' '), 'INDONESIA'], '\n');
+        const rtrw = (rt || rw) ? `RT ${rt || '001'} RW ${rw || '002'}` : '';
+        const dusunRtRw = join([dusun, rtrw], ' ');
+        const kabPos = join([kab, pos], ' ');
+        
+        // Urutan persis seperti di gambar: Kecamatan -> Desa -> Dusun/RT/RW -> Kabupaten & Kode Pos -> INDONESIA
+        return join([kec, desa, dusunRtRw, kabPos, 'INDONESIA'], '\n');
       }
       if (exp === 'B') {
         const rtrw = (rt || rw) ? `RT ${rt || '001'}/RW ${rw || '002'}` : '';
@@ -2472,8 +2476,8 @@
 
       appState.templatesData.A.p3 = withKcpPrefix(cabUpper);
       appState.templatesData.A.p4 = akun;
-      appState.templatesData.A.p5 = namaUpper;
-      appState.templatesData.A.p6 = formatAddressForTemplate('A', c);
+      appState.templatesData.A.p5 = namaUpper; // Nama Pengguna (Baris pertama di atas alamat)
+      appState.templatesData.A.p6 = formatAddressForTemplate('A', c); // Alamat menurun ke bawah
 
       appState.templatesData.B.p2 = matchBankBDatabase(p.alamatUnitRaw);
       appState.templatesData.B.p3 = cabUpper.startsWith('UNIT ') ? cabUpper : `UNIT ${cabUpper}`;
