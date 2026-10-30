@@ -1793,6 +1793,35 @@
 
     async function autoCompleteAddressOnline(comp) {
       const myToken = ++addrLookupToken;
+      
+      // Kamus terjemahan/pemetaan nama provinsi dari Bahasa Inggris ke Bahasa Indonesia
+      const PROVINCE_EN_TO_ID = {
+        "Central Java": "JAWA TENGAH",
+        "West Java": "JAWA BARAT",
+        "East Java": "JAWA TIMUR",
+        "Jakarta": "DKI JAKARTA",
+        "Special Region of Yogyakarta": "DI YOGYAKARTA",
+        "Yogyakarta": "DI YOGYAKARTA",
+        "Banten": "BANTEN",
+        "Bali": "BALI",
+        "Aceh": "ACEH",
+        "North Sumatra": "SUMATERA UTARA",
+        "West Sumatra": "SUMATERA BARAT",
+        "Riau": "RIAU",
+        "Riau Islands": "KEPULAUAN RIAU",
+        "Jambi": "JAMBI",
+        "South Sumatra": "SUMATERA SELATAN",
+        "Bengkulu": "BENGKULU",
+        "Lampung": "LAMPUNG",
+        "Bangka Belitung Islands": "KEPULAUAN BANGKA BELITUNG"
+      };
+
+      const normalizeProvinceName = (provStr) => {
+        if (!provStr) return '';
+        const clean = provStr.trim();
+        return PROVINCE_EN_TO_ID[clean] || clean.toUpperCase();
+      };
+
       const queries = [
         [comp.desa, comp.kabkota].filter(Boolean).join(' '),
         [comp.desa, comp.kecamatan].filter(Boolean).join(' '),
@@ -1808,7 +1837,6 @@
             const json = await res.json();
             const list = Array.isArray(json.data) ? json.data : [];
             if (list.length > 0) {
-              // Prioritaskan yang kabupaten/kotanya cocok
               const match = list.find(item =>
                 comp.kabkota && isSimilarRegionName(item.regency || item.city, comp.kabkota)
               ) || list[0];
@@ -1817,11 +1845,10 @@
               const up = v => String(v || '').toUpperCase().trim();
 
               if (match.code || match.postal_code) comp.kodepos = String(match.code || match.postal_code);
-              if (match.province && !comp.provinsi) comp.provinsi = up(match.province);
+              if (match.province && !comp.provinsi) comp.provinsi = normalizeProvinceName(match.province);
               if (match.regency && !comp.kabkota) comp.kabkota = up(match.regency);
               if (match.village && !comp.desa) comp.desa = up(match.village);
 
-              // Koreksi otomatis jika kecamatan kosong atau typo (contoh: Sungai Pagi -> Sungai Pagu)
               if (match.subdistrict || match.district) {
                 const apiKec = up(match.subdistrict || match.district);
                 if (!comp.kecamatan || isSimilarRegionName(comp.kecamatan, apiKec)) {
@@ -1847,7 +1874,7 @@
           if (myToken === addrLookupToken && osmData.length > 0 && osmData[0].address) {
             const a = osmData[0].address;
             if (a.postcode && !comp.kodepos) comp.kodepos = String(a.postcode).replace(/\D/g, '').slice(0, 5);
-            if (a.state && !comp.provinsi) comp.provinsi = a.state.toUpperCase();
+            if (a.state && !comp.provinsi) comp.provinsi = normalizeProvinceName(a.state);
             if ((a.county || a.city) && !comp.kabkota) comp.kabkota = (a.county || a.city).toUpperCase().replace(/^KABUPATEN\s+/i, '');
             populateAddressHelperInputs();
             rebuildFormattedAddressForCurrentTemplate(false);
