@@ -351,13 +351,13 @@
             <h2 class="font-bold text-slate-800 text-sm">Copy-Paste pesan WhatsApp disini</h2>
           </div>
           <div class="flex items-center gap-1.5">
+            <button onclick="openConverterModal()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
+              <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
+              Konverter WA
+            </button>
             <button onclick="loadSampleWhatsApp()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition">
               <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
               Contoh WA
-            </button>
-            <button onclick="pasteFromClipboard()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-              <i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i>
-              Tempel
             </button>
           </div>
         </div>
@@ -873,6 +873,36 @@
 
       <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
         <button onclick="closeTemplateAssetsModal()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">Simpan & Tutup</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- CONVERTER WA IFRAME MODAL -->
+  <div id="converterModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-2xl max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <i data-lucide="wand-2" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm sm:text-base">Konverter Format Pesan WhatsApp</h3>
+            <p class="text-[11px] text-slate-500">Ubah form balasan nasabah menjadi urutan 1–6 siap pakai</p>
+          </div>
+        </div>
+        <button onclick="closeConverterModal()" class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition">
+          Tutup
+        </button>
+      </div>
+
+      <div class="flex-1 w-full bg-slate-50 overflow-hidden">
+        <iframe id="converterIframe" src="./konverter.html" class="w-full h-full border-0"></iframe>
+      </div>
+
+      <div class="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <button onclick="closeConverterModal()" class="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition">
+          Tutup
+        </button>
       </div>
     </div>
   </div>
@@ -2737,39 +2767,38 @@
 
     function generateRandomFinancials(exp) {
       pushHistorySnapshot();
-      const randStep = (min, max, step = 5000) => {
-        const steps = Math.floor((max - min) / step);
-        return min + Math.floor(Math.random() * (steps + 1)) * step;
+      const randFull = (min, max) => {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
       };
 
       if (exp === 'C') {
-        const saldoAwal = randStep(650000, 15000000, 25000);
-        const pemasukan = randStep(3500000, 45000000, 50000);
-        const maxPengeluaran = (saldoAwal + pemasukan) - 550000;
-        const pengeluaran = randStep(1200000, Math.max(1500000, Math.min(maxPengeluaran, 38000000)), 25000);
-        const saldoAkhir = Math.max(550000, saldoAwal + pemasukan - pengeluaran);
+        const saldoAwal = randFull(650000, 15000000);
+        const pemasukan = randFull(3500000, 45000000);
+        const maxPengeluaran = (saldoAwal + pemasukan) - 500000;
+        const pengeluaran = randFull(1200000, Math.max(1500000, Math.min(maxPengeluaran, 38000000)));
+        const saldoAkhir = Math.max(500000, saldoAwal + pemasukan - pengeluaran);
 
         appState.templatesData.C.saldoAwal = formatIDRNumber(saldoAwal, false);
         appState.templatesData.C.totalPemasukan = formatIDRNumber(pemasukan, false);
         appState.templatesData.C.totalPengeluaran = formatIDRNumber(pengeluaran, false);
         appState.templatesData.C.saldoAkhir = formatIDRNumber(saldoAkhir, false);
       } else if (exp === 'D') {
-        const saldoAwal = randStep(800000, 18000000, 25000);
-        const danaMasuk = randStep(4000000, 52000000, 50000);
-        const maxKeluar = (saldoAwal + danaMasuk) - 600000;
-        const danaKeluar = randStep(1500000, Math.max(1800000, Math.min(maxKeluar, 42000000)), 25000);
-        const saldoAkhir = Math.max(600000, saldoAwal + danaMasuk - danaKeluar);
+        const saldoAwal = randFull(800000, 18000000);
+        const danaMasuk = randFull(4000000, 52000000);
+        const maxKeluar = (saldoAwal + danaMasuk) - 500000;
+        const danaKeluar = randFull(1500000, Math.max(1800000, Math.min(maxKeluar, 42000000)));
+        const saldoAkhir = Math.max(500000, saldoAwal + danaMasuk - danaKeluar);
 
-        appState.templatesData.D.saldoAwal = formatIDRNumber(saldoAwal);
-        appState.templatesData.D.danaMasuk = formatIDRNumber(danaMasuk);
-        appState.templatesData.D.danaKeluar = formatIDRNumber(danaKeluar);
-        appState.templatesData.D.saldoAkhir = formatIDRNumber(saldoAkhir);
+        appState.templatesData.D.saldoAwal = formatIDRNumber(saldoAwal, false);
+        appState.templatesData.D.danaMasuk = formatIDRNumber(danaMasuk, false);
+        appState.templatesData.D.danaKeluar = formatIDRNumber(danaKeluar, false);
+        appState.templatesData.D.saldoAkhir = formatIDRNumber(saldoAkhir, false);
       } else if (exp === 'E') {
-        const nominal = randStep(550000, 25000000, 25000);
-        appState.templatesData.E.mB = formatIDRNumber(nominal);
+        const nominal = randFull(550000, 25000000);
+        appState.templatesData.E.mB = formatIDRNumber(nominal, false);
 	  } else if (exp === 'F') {
-        const nominal = randStep(500000, 25000000, 25000);
-        appState.templatesData.F.mE = formatIDRNumber(nominal);
+        const nominal = randFull(500000, 25000000);
+        appState.templatesData.F.mE = formatIDRNumber(nominal, false);
       }
 
       renderDynamicForm();
@@ -4427,6 +4456,26 @@
       };
       reader.readAsDataURL(file);
     }
+	
+	function openConverterModal() {
+      const m = document.getElementById('converterModal');
+      if (m) m.classList.remove('hidden');
+    }
+    function closeConverterModal() {
+      const m = document.getElementById('converterModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    // Menerima hasil otomatis jika tombol "Salin & Pakai di Editor" di dalam iframe diklik
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'APPLY_CONVERTED_WA' && e.data.payload) {
+        const rawInput = document.getElementById('rawWhatsappInput');
+        if (rawInput) rawInput.value = e.data.payload;
+        appState.rawWhatsapp = e.data.payload;
+        parseRawWhatsapp(e.data.payload, true);
+        closeConverterModal();
+      }
+    });
 
     function openConfirmResetModal() {
       const m = document.getElementById('confirmResetModal');
