@@ -1109,7 +1109,7 @@
     // (link halaman GitHub biasa yang memuat /blob/ juga otomatis diubah menjadi link raw).
     // Kosongkan salah satu bank untuk memakai folder / nama file di bawah.
 	// >>> TEMPEL LINK GAMBAR LAYER TAMBAHAN BRI DI SINI <<<
-    const BRI_EXTRA_OVERLAY_URL = 'https://marketingexata.github.io/statement/template%20statement/bris2.png';
+    const BRI_EXTRA_OVERLAY_URL = 'https://marketingexata.github.io/statement/template%20statement/bris.png';
 
     function renderBriExtraOverlay() {
       const layer = document.getElementById('briExtraLayer');
@@ -1865,11 +1865,11 @@
 
       let text = rawAddr.replace(/\s+/g, ' ').trim();
 
-      // 1. Ekstrak RT & RW (jika tidak ada di WA, otomatis isi default 001 / 002)
+      // 1. Ekstrak RT & RW (Mendukung format "002/003", "RT 02/03", "Rt.03/10", dll)
       let rt = '', rw = '';
       const rtRwPatterns = [
-        /\bRT\.?\s*:?\s*(\d{1,3})\s*(?:[,;]?\s*\/?\s*RW|\/)\s*\.?\s*:?\s*(\d{1,3})\b/i,
-        /\bRT\s*\/\s*RW\s*[.:]?\s*(\d{1,3})\s*[\/\-]\s*(\d{1,3})\b/i
+        /\b(?:RT\.?\s*)?(\d{1,3})\s*[\/\-]\s*(?:RW\.?\s*)?(\d{1,3})\b/i,
+        /\bRT\.?\s*:?\s*(\d{1,3})\s*(?:[,;]?\s*\/?\s*RW|\/)\s*\.?\s*:?\s*(\d{1,3})\b/i
       ];
       for (const re of rtRwPatterns) {
         const m = text.match(re);
@@ -1894,7 +1894,7 @@
         text = text.replace(zipMatch[0], ' ');
       }
 
-      // 3. Pecah per koma/titik koma agar segmen berlabel & tanpa label tidak saling tumpang tindih
+      // 3. Pecah per koma/titik koma atau spasi berlebih untuk mendeteksi label (Desa, Kec, Kab, Prov)
       const segments = text.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
       let dusun = '', desa = '', kecamatan = '', kabkota = '', provinsi = '';
       const unlabeled = [];
@@ -1902,12 +1902,10 @@
       segments.forEach(seg => {
         let s = seg.replace(/\s+/g, ' ').trim();
 
-        // Cek apakah segmen memiliki beberapa label sekaligus dalam 1 potong kalimat
         const STOP = '(?:desa|des|kelurahan|kel|nagari|kampung|kecamatan|kec|kabupaten|kab|kota|provinsi|prov|dusun|dsn|dukuh)';
         const multiCheck = s.match(new RegExp('\\b' + STOP + '\\b', 'gi'));
 
         if (multiCheck && multiCheck.length > 1) {
-          // Sisipkan koma sebelum tiap label lalu proses ulang
           s.replace(new RegExp('\\b(' + STOP + ')\\b', 'gi'), ', $1')
            .split(',').map(x => x.trim()).filter(Boolean)
            .forEach(sub => segments.push(sub));
@@ -1929,38 +1927,42 @@
         } else if (mDesa) {
           desa = mDesa[1].trim();
         } else if (mDusun) {
-          dusun = seg.trim(); // Pertahankan kata Jl./Dusun jika ada
+          dusun = seg.trim();
         } else {
-          const upSeg = s.toUpperCase().replace(/^PROVINSI\s+/, '').trim();
-          const matchedProv = DAFTAR_PROVINSI_ID.find(p => upSeg === p || (upSeg === 'SUMBAR' && p === 'SUMATERA BARAT'));
-          if (matchedProv && !provinsi) {
-            provinsi = matchedProv === 'JAKARTA' ? 'DKI JAKARTA' : matchedProv;
+          // Deteksi otomatis kata tanpa label eksplisit berdasarkan kata kunci wilayah umum
+          const upSeg = s.toUpperCase();
+          if (/^(KABUPATEN|KAB\.|KOTA)\s+/i.test(s)) {
+            kabkota = s.replace(/^(KABUPATEN|KAB\.|KOTA)\s+/i, '').trim();
+          } else if (/^(KECAMATAN|KEC\.)\s+/i.test(s)) {
+            kecamatan = s.replace(/^(KECAMATAN|KEC\.)\s+/i, '').trim();
+          } else if (/^(DESA|KELURAHAN|KEL\.)\s+/i.test(s)) {
+            desa = s.replace(/^(DESA|KELURAHAN|KEL\.)\s+/i, '').trim();
           } else {
-            unlabeled.push(s);
+            const matchedProv = DAFTAR_PROVINSI_ID.find(p => upSeg === p || upSeg.includes(p));
+            if (matchedProv && !provinsi) {
+              provinsi = matchedProv === 'JAKARTA' ? 'DKI JAKARTA' : matchedProv;
+            } else {
+              unlabeled.push(s);
+            }
           }
         }
       });
 
-      // 4. Alokasikan segmen tanpa label secara berurutan (Dusun -> Desa -> Kecamatan -> Kab/Kota)
+      // 4. Alokasikan bagian sisa (unlabeled) secara berurutan jika tidak ada label teks
       if (unlabeled.length > 0) {
-        if (unlabeled.length === 1) {
-          if (!dusun) dusun = unlabeled[0];
-          if (!desa) desa = unlabeled[0];
-        } else {
-          for (const item of unlabeled) {
-            if (!dusun) { dusun = item; continue; }
-            if (!desa) { desa = item; continue; }
-            if (!kecamatan) { kecamatan = item; continue; }
-            if (!kabkota) { kabkota = item; continue; }
-            if (!provinsi) { provinsi = item; continue; }
-          }
+        for (const item of unlabeled) {
+          if (!dusun) { dusun = item; continue; }
+          if (!desa) { desa = item; continue; }
+          if (!kecamatan) { kecamatan = item; continue; }
+          if (!kabkota) { kabkota = item; continue; }
+          if (!provinsi) { provinsi = item; continue; }
         }
       }
 
       if (!dusun && desa) dusun = desa;
       if (!desa && dusun) desa = dusun;
 
-      // 5. Cek kamus lokal terlebih dahulu
+      // 5. Cek kamus lokal wilayah untuk melengkapi provinsi & kodepos jika kosong
       const wordHit = (needle, key) => new RegExp('(^|[^a-z])' + key + '([^a-z]|$)', 'i').test(needle);
       for (const src of [kabkota, kecamatan, desa, text]) {
         if (!src) continue;
@@ -1976,8 +1978,8 @@
       const up = v => (v || '').toUpperCase().trim();
       appState.addrComponents = {
         dusun: up(dusun),
-        rt: rt ? pad3(rt) : '001', // Default RT otomatis jika kosong
-        rw: rw ? pad3(rw) : '002', // Default RW otomatis jika kosong
+        rt: rt ? pad3(rt) : '001',
+        rw: rw ? pad3(rw) : '002',
         desa: up(desa),
         kecamatan: up(kecamatan),
         kabkota: up(kabkota),
@@ -1986,7 +1988,7 @@
       };
       appState.addrMissing = [];
 
-      // 6. Lengkapi Kode Pos & perbaiki typo wilayah secara online di latar belakang
+      // 6. Lengkapi Kode Pos & perbaiki typo secara online di latar belakang
       autoCompleteAddressOnline(appState.addrComponents);
     }
 
