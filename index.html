@@ -1643,6 +1643,15 @@
           if (!appState.bniLayoutV5) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV5 = true; }
 		  if (!appState.bniLayoutV4) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV4 = true; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
           if (!appState.bniLayoutV2) { appState.layouts.C = normalizeLayouts({ C: getBaseLayouts().C }).C; appState.bniLayoutV2 = true; appState.bniLayoutV3 = true; }
+
+		  if (!appState.bniBoldP3Update) {
+            const boxesC = appState.layouts?.C?.boxes;
+            if (boxesC && boxesC.p3) {
+              boxesC.p3.bold = true;
+            }
+            appState.bniBoldP3Update = true;
+          }
+			
           if (!appState.bsiLayoutV2) { appState.layouts.E = normalizeLayouts({ E: getBaseLayouts().E }).E; appState.bsiLayoutV2 = true; appState.bsiLayoutV3 = true; }
           if (!appState.permataLayoutV1 || !appState.layouts.F) {
             appState.layouts.F = normalizeLayouts({ F: getBaseLayouts().F }).F;
