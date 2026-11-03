@@ -328,6 +328,19 @@
 
       <!-- Right Action Buttons -->
       <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <button onclick="openProfileModal()" id="btnHeaderProfile" class="hidden items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition" title="Pengaturan Profil & Akun">
+          <i data-lucide="user-circle" class="w-4 h-4 text-indigo-600"></i>
+          <span>Profil</span>
+          <span id="headerAccountBadge" class="px-1.5 py-0.2 bg-indigo-600 text-white rounded-md text-[10px] font-bold">AI</span>
+        </button>
+
+        <!-- Menu History Button (Sebelah Kiri Tombol Buat Baru) -->
+        <button onclick="openHistoryModal()" class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition">
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span>History</span>
+          <span id="historyCountBadge" class="px-1.5 py-0.2 bg-indigo-200/80 text-indigo-800 rounded-md text-[10px] font-bold">0</span>
+        </button>
+
         <!-- Buat Baru / Reset All Button -->
         <button onclick="openConfirmResetModal()" class="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition">
           <i data-lucide="file-plus-2" class="w-4 h-4"></i>
@@ -924,6 +937,211 @@
       <div class="flex items-center justify-end gap-2 pt-2">
         <button onclick="closeConfirmResetModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200">Batal</button>
         <button onclick="confirmResetWorkspace()" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm">Ya, Buat Baru</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- HALAMAN LOGIN PROPER FULL-SCREEN (TEMA E-STATEMENT) -->
+  <div id="loginModal" class="fixed inset-0 z-[70] bg-slate-900 flex items-center justify-center p-4 overflow-y-auto">
+    <!-- Dekorasi Cahaya Latar -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl"></div>
+      <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-blue-600/20 blur-3xl"></div>
+    </div>
+
+    <div class="relative bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200/80">
+      <!-- Header Banner Login -->
+      <div class="bg-gradient-to-b from-white via-slate-50/80 to-slate-100 px-6 py-7 text-center relative overflow-hidden border-b border-slate-200/80">
+        <div class="h-14 flex items-center justify-center mx-auto mb-3">
+          <img src="https://marketingexata.github.io/statement/EXATA.png" alt="Logo Exata" class="max-h-12 w-auto object-contain" />
+        </div>
+        <h2 class="font-extrabold text-xl tracking-tight text-slate-900">Editor E-Statement</h2>
+        <p class="text-xs text-slate-500 mt-1">Edit E-Statement jadi lebih gampang</p>
+      </div>
+
+      <!-- Form Login -->
+      <form onsubmit="submitLoginAccount(event)" class="p-6 sm:p-7 space-y-4">
+        <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/80 text-[11px] text-slate-600">
+          <span class="font-semibold">Pilih Akun:</span>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="quickFillLoginUser('AI')" class="px-2.5 py-0.5 rounded-lg bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 font-bold transition">AI</button>
+            <button type="button" onclick="quickFillLoginUser('MT')" class="px-2.5 py-0.5 rounded-lg bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 font-bold transition">MT</button>
+            <button type="button" onclick="quickFillLoginUser('SN')" class="px-2.5 py-0.5 rounded-lg bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 font-bold transition">SN</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Username</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="loginUsernameInput" required placeholder="Masukkan username (AI / MT / SN)" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-semibold text-slate-800 outline-none transition" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Password</label>
+          <div class="relative">
+            <i data-lucide="key-round" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="password" id="loginPasswordInput" required placeholder="Masukkan password akun..." class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-xs sm:text-sm font-semibold text-slate-800 outline-none transition" />
+            <button type="button" onclick="togglePasswordVisibility('loginPasswordInput')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="loginErrorMsg" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-2.5"></div>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          <span>Masuk ke Editor</span>
+        </button>
+
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+          <span>Tersinkronisasi dengan Google Database</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL PROFIL PENGGUNA (UBAH USERNAME, PASSWORD & LOGOUT) -->
+  <div id="profileModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <i data-lucide="user-cog" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Profil & Pengaturan Akun</h3>
+            <p class="text-xs text-slate-500">Ubah username, password, atau keluar sesi</p>
+          </div>
+        </div>
+        <button onclick="closeProfileModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="submitUpdateProfile(event)" class="p-5 space-y-4 text-xs">
+        <!-- Info Card Akun -->
+        <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200/80 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-bold uppercase text-indigo-600 tracking-wider">Database Aktif</div>
+            <div class="font-extrabold text-slate-900 text-sm mt-0.5">Akun: <span id="profModalRoleCode" class="text-indigo-700">AI</span></div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Aktif
+          </span>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Username Baru / Saat Ini</label>
+          <input type="text" id="profNewUsername" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:border-indigo-500 outline-none" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Password Saat Ini <span class="text-rose-500">*</span></label>
+          <div class="relative">
+            <input type="password" id="profOldPassword" required placeholder="Wajib diisi untuk verifikasi..." class="w-full pl-3.5 pr-9 py-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:border-indigo-500 outline-none" />
+            <button type="button" onclick="togglePasswordVisibility('profOldPassword')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Password Baru <span class="text-slate-400 font-normal">(Kosongkan jika tidak ingin ganti password)</span></label>
+          <div class="relative">
+            <input type="password" id="profNewPassword" placeholder="Masukkan password baru..." class="w-full pl-3.5 pr-9 py-2 rounded-xl border border-slate-300 font-semibold text-slate-800 focus:border-indigo-500 outline-none" />
+            <button type="button" onclick="togglePasswordVisibility('profNewPassword')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="profFeedbackMsg" class="hidden rounded-xl px-3 py-2 font-semibold"></div>
+
+        <div class="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
+          <button type="button" onclick="handleLogoutAccount()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold transition">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span>Logout</span>
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeProfileModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold">Batal</button>
+            <button type="submit" id="btnSaveProfile" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm transition">
+              Simpan Profil
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL HISTORY -->
+  <div id="historyModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <i data-lucide="history" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">History E-Statement — Akun <span id="historyModalAccountName" class="text-indigo-600">AI</span></h3>
+            <p class="text-xs text-slate-500">Klik item untuk memuat ulang teks WhatsApp ke editor, atau klik Edit / Hapus</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchUserHistoryFromSheet(true)" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center gap-1 transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Refresh</span>
+          </button>
+          <button onclick="closeHistoryModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-3 flex-1">
+        <input type="text" id="historySearchInput" oninput="renderHistoryList()" placeholder="Cari nama, bank, atau tanggal..." class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs" />
+
+        <div id="historyEditPanel" class="hidden p-4 rounded-xl bg-amber-50/80 border border-amber-300 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-900">Edit Data History</span>
+            <button type="button" onclick="cancelEditHistory()" class="text-xs text-slate-500 hover:text-slate-800 font-semibold">Batal</button>
+          </div>
+          <input type="hidden" id="editHistId" />
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase">Nama</label>
+              <input type="text" id="editHistNama" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-semibold" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase">Bank</label>
+              <input type="text" id="editHistBank" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-semibold" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase">Tanggal (dd/mm/yyyy)</label>
+              <input type="text" id="editHistTanggal" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-mono" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-600 uppercase">Teks Copy-Paste WhatsApp</label>
+            <textarea id="editHistRawWa" rows="5" class="w-full mt-0.5 p-2.5 rounded-lg border border-slate-300 text-xs font-mono bg-white"></textarea>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" onclick="saveEditedHistory()" id="btnSaveEditHist" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+              Simpan Perubahan
+            </button>
+          </div>
+        </div>
+
+        <div id="historyListContainer" class="space-y-2 max-h-[52vh] overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <span id="historySyncStatus">Tersinkron dengan Google Spreadsheet</span>
+        <button onclick="closeHistoryModal()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">Tutup</button>
       </div>
     </div>
   </div>
@@ -4238,6 +4456,9 @@
           pdf.save(`${filenameBase}_A4.pdf`);
           showToast(`PDF A4 berhasil diunduh!`, 'success');
         }
+		
+		saveHistoryAfterExport(rawNama, bankName, exp);
+		
       } catch (err) {
         console.error('Export Error:', err);
         showToast('Terjadi kendala saat mengekspor dokumen.', 'error');
@@ -5025,6 +5246,447 @@
       tryFetchOtherBankDatabases();
       if (window.lucide) lucide.createIcons();
     });
+	
+	/*************************************************************************
+     * INTEGRASI LOGIN, MENU PROFIL & DATABASE HISTORY SPREADSHEET (AI, MT, SN)
+     * >>> TEMPEL URL WEB APP GOOGLE APPS SCRIPT KAMU DI BAWAH INI <<<
+     *************************************************************************/
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw1Nnf7e6lFU9_r0w1iyZgK_k2MiU92nick7vKeNOJ4geQMmUwumX9G2-OaZHfE-w4r/exec';
+    const AUTH_SESSION_KEY = 'STATEMENT_ACTIVE_AUTH_USER_V1';
+
+    let currentAuthUser = null; // { account: 'AI'|'MT'|'SN', username: '...' }
+    let userHistoryList = [];
+
+    function getLocalHistoryKey(account) {
+      return `STATEMENT_HISTORY_CACHE_${account}`;
+    }
+
+    function quickFillLoginUser(val) {
+      const el = document.getElementById('loginUsernameInput');
+      const passEl = document.getElementById('loginPasswordInput');
+      if (el) el.value = val;
+      if (passEl) passEl.focus();
+    }
+
+    function togglePasswordVisibility(inputId) {
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
+    function initAuthAndHistory() {
+      try {
+        const savedAuth = localStorage.getItem(AUTH_SESSION_KEY);
+        if (savedAuth) {
+          const parsed = JSON.parse(savedAuth);
+          if (parsed && ['AI', 'MT', 'SN'].includes(parsed.account)) {
+            currentAuthUser = parsed;
+            applyLoggedInUI();
+            loadCachedHistory(parsed.account);
+            fetchUserHistoryFromSheet(false);
+            return;
+          }
+        }
+      } catch (_) {}
+      showLoginModal();
+    }
+
+    function showLoginModal() {
+      const m = document.getElementById('loginModal');
+      if (m) m.classList.remove('hidden');
+      const btnProf = document.getElementById('btnHeaderProfile');
+      if (btnProf) { btnProf.classList.add('hidden'); btnProf.classList.remove('inline-flex'); }
+    }
+
+    function applyLoggedInUI() {
+      const m = document.getElementById('loginModal');
+      if (m) m.classList.add('hidden');
+      const btnProf = document.getElementById('btnHeaderProfile');
+      const badge = document.getElementById('headerAccountBadge');
+      const modalAcc = document.getElementById('historyModalAccountName');
+      if (btnProf && currentAuthUser) {
+        btnProf.classList.remove('hidden');
+        btnProf.classList.add('inline-flex');
+      }
+      if (badge && currentAuthUser) {
+        badge.textContent = `${currentAuthUser.username} (${currentAuthUser.account})`;
+      }
+      if (modalAcc && currentAuthUser) {
+        modalAcc.textContent = `${currentAuthUser.username} (${currentAuthUser.account})`;
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function callGasApi(payload) {
+      if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('PASTE_URL')) {
+        throw new Error('URL Google Apps Script belum diisi di konstanta GAS_WEB_APP_URL!');
+      }
+      const res = await fetch(GAS_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    }
+
+    async function submitLoginAccount(e) {
+      e.preventDefault();
+      const userEl = document.getElementById('loginUsernameInput');
+      const passEl = document.getElementById('loginPasswordInput');
+      const errEl = document.getElementById('loginErrorMsg');
+      const btn = document.getElementById('btnLoginSubmit');
+
+      const username = (userEl?.value || '').trim();
+      const password = (passEl?.value || '').trim();
+      if (!username || !password) return;
+
+      if (errEl) errEl.classList.add('hidden');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span>Memverifikasi Akun...</span>'; }
+
+      try {
+        const res = await callGasApi({ action: 'login', username, password });
+        if (res.status === 'ok' && ['AI', 'MT', 'SN'].includes(res.account)) {
+          currentAuthUser = { account: res.account, username: res.username };
+          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentAuthUser));
+          userHistoryList = Array.isArray(res.history) ? res.history : [];
+          saveCachedHistory(currentAuthUser.account, userHistoryList);
+          applyLoggedInUI();
+          updateHistoryBadge();
+          renderHistoryList();
+          if (passEl) passEl.value = '';
+          showToast(`Selamat datang, ${currentAuthUser.username} (Akun ${currentAuthUser.account})!`, 'success');
+        } else {
+          if (errEl) {
+            errEl.textContent = res.message || 'Username atau Password salah!';
+            errEl.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        if (errEl) {
+          errEl.textContent = err.message || 'Gagal terhubung ke Spreadsheet.';
+          errEl.classList.remove('hidden');
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="log-in" class="w-4 h-4"></i><span>Masuk ke Workspace</span>';
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    }
+
+    // MENU PROFIL: BUKA, UPDATE USERNAME/PASSWORD, & LOGOUT
+    function openProfileModal() {
+      if (!currentAuthUser) { showLoginModal(); return; }
+      const m = document.getElementById('profileModal');
+      if (!m) return;
+      document.getElementById('profModalRoleCode').textContent = currentAuthUser.account;
+      document.getElementById('profNewUsername').value = currentAuthUser.username || currentAuthUser.account;
+      document.getElementById('profOldPassword').value = '';
+      document.getElementById('profNewPassword').value = '';
+      const msg = document.getElementById('profFeedbackMsg');
+      if (msg) msg.classList.add('hidden');
+      m.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeProfileModal() {
+      const m = document.getElementById('profileModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    async function submitUpdateProfile(e) {
+      e.preventDefault();
+      if (!currentAuthUser) return;
+      const newUsername = (document.getElementById('profNewUsername')?.value || '').trim();
+      const oldPassword = (document.getElementById('profOldPassword')?.value || '').trim();
+      const newPassword = (document.getElementById('profNewPassword')?.value || '').trim();
+      const msgEl = document.getElementById('profFeedbackMsg');
+      const btn = document.getElementById('btnSaveProfile');
+
+      if (!newUsername || !oldPassword) return;
+      if (msgEl) msgEl.classList.add('hidden');
+      if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+
+      try {
+        const res = await callGasApi({
+          action: 'updateProfile',
+          account: currentAuthUser.account,
+          oldPassword,
+          newUsername,
+          newPassword
+        });
+
+        if (res.status === 'ok') {
+          currentAuthUser.username = res.username || newUsername;
+          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentAuthUser));
+          applyLoggedInUI();
+          closeProfileModal();
+          showToast('Profil (Username / Password) berhasil diperbarui di Spreadsheet!', 'success');
+        } else {
+          if (msgEl) {
+            msgEl.textContent = res.message || 'Gagal memperbarui profil.';
+            msgEl.className = ' rounded-xl px-3 py-2 font-semibold bg-rose-50 text-rose-600 border border-rose-200';
+          }
+        }
+      } catch (err) {
+        if (msgEl) {
+          msgEl.textContent = err.message || 'Gagal terhubung ke server Spreadsheet.';
+          msgEl.className = 'rounded-xl px-3 py-2 font-semibold bg-rose-50 text-rose-600 border border-rose-200';
+        }
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Simpan Profil'; }
+      }
+    }
+
+    function handleLogoutAccount() {
+      if (!confirm(`Keluar dari akun ${currentAuthUser?.username || ''} (${currentAuthUser?.account || ''})?`)) return;
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      currentAuthUser = null;
+      userHistoryList = [];
+      updateHistoryBadge();
+      closeProfileModal();
+      closeHistoryModal();
+      showLoginModal();
+      showToast('Berhasil keluar dari akun.', 'info');
+    }
+
+    // MANAJEMEN HISTORY PER AKUN
+    function loadCachedHistory(account) {
+      try {
+        const raw = localStorage.getItem(getLocalHistoryKey(account));
+        userHistoryList = raw ? JSON.parse(raw) : [];
+      } catch (_) { userHistoryList = []; }
+      updateHistoryBadge();
+    }
+
+    function saveCachedHistory(account, list) {
+      try {
+        localStorage.setItem(getLocalHistoryKey(account), JSON.stringify(list || []));
+      } catch (_) {}
+      updateHistoryBadge();
+    }
+
+    function updateHistoryBadge() {
+      const badge = document.getElementById('historyCountBadge');
+      if (badge) badge.textContent = userHistoryList.length;
+    }
+
+    async function fetchUserHistoryFromSheet(showNotif = false) {
+      if (!currentAuthUser) return;
+      const statusEl = document.getElementById('historySyncStatus');
+      if (statusEl) statusEl.textContent = 'Menyinkronkan database...';
+      try {
+        const res = await callGasApi({ action: 'getHistory', account: currentAuthUser.account });
+        if (res.status === 'ok' && Array.isArray(res.history)) {
+          userHistoryList = res.history;
+          saveCachedHistory(currentAuthUser.account, userHistoryList);
+          renderHistoryList();
+          if (statusEl) statusEl.textContent = `Tersinkron (${userHistoryList.length} data di history ${currentAuthUser.account})`;
+          if (showNotif) showToast(`History Akun ${currentAuthUser.account} diperbarui!`, 'success');
+        }
+      } catch (_) {
+        if (statusEl) statusEl.textContent = 'Mode offline (memakai cache lokal)';
+      }
+    }
+
+    async function saveHistoryAfterExport(namaAsli, bankName, expCode) {
+      if (!currentAuthUser) return;
+      const rawWa = (document.getElementById('rawWhatsappInput')?.value || appState.rawWhatsapp || '').trim();
+      if (!rawWa) return;
+
+      const now = new Date();
+      const tanggal = `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`;
+      const nama = (namaAsli || appState.parsed.namaPenggunaRaw || 'Tanpa Nama').trim();
+      const bank = (bankName || (EXPEDITION_META[expCode] && EXPEDITION_META[expCode].name) || expCode).trim();
+      const newItem = {
+        id: 'hist_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        tanggal,
+        nama,
+        bank,
+        exp: expCode || appState.activeExpedition,
+        label: `estatement ${nama} ${bank} ${tanggal}`,
+        rawWhatsapp: rawWa
+      };
+
+      userHistoryList.unshift(newItem);
+      saveCachedHistory(currentAuthUser.account, userHistoryList);
+      renderHistoryList();
+
+      try {
+        const res = await callGasApi({
+          action: 'addHistory',
+          account: currentAuthUser.account,
+          item: newItem
+        });
+        if (res.status === 'ok' && Array.isArray(res.history)) {
+          userHistoryList = res.history;
+          saveCachedHistory(currentAuthUser.account, userHistoryList);
+          renderHistoryList();
+        }
+      } catch (err) {
+        console.warn('Gagal simpan history ke Spreadsheet:', err);
+      }
+    }
+
+    function openHistoryModal() {
+      if (!currentAuthUser) { showLoginModal(); return; }
+      const m = document.getElementById('historyModal');
+      if (m) {
+        m.classList.remove('hidden');
+        renderHistoryList();
+        fetchUserHistoryFromSheet(false);
+      }
+    }
+
+    function closeHistoryModal() {
+      const m = document.getElementById('historyModal');
+      if (m) m.classList.add('hidden');
+      cancelEditHistory();
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('historyListContainer');
+      if (!container) return;
+      const q = (document.getElementById('historySearchInput')?.value || '').toLowerCase().trim();
+
+      const filtered = userHistoryList.filter(item => {
+        if (!q) return true;
+        const text = `estatement ${item.nama} ${item.bank} ${item.tanggal} ${item.rawWhatsapp}`.toLowerCase();
+        return text.includes(q);
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">Belum ada history untuk Akun ${escapeHtml(currentAuthUser?.account || '')}</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const displayTitle = `estatement ${item.nama} ${item.bank} ${item.tanggal}`;
+        return `
+          <div class="p-3 rounded-xl border border-slate-200 hover:border-indigo-300 bg-slate-50/70 hover:bg-indigo-50/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <button type="button" onclick="applyHistoryItemToEditor('${escapeHtml(item.id)}')" class="text-left flex-1 min-w-0 group">
+              <div class="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-700 truncate">${escapeHtml(displayTitle)}</div>
+              <div class="text-[11px] text-slate-500 font-mono truncate mt-0.5">${escapeHtml((item.rawWhatsapp || '').replace(/\r?\n/g, ' • '))}</div>
+            </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="applyHistoryItemToEditor('${escapeHtml(item.id)}')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[11px]">Pakai</button>
+              <button type="button" onclick="startEditHistory('${escapeHtml(item.id)}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold text-[11px]">Edit</button>
+              <button type="button" onclick="deleteHistoryItem('${escapeHtml(item.id)}')" class="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold text-[11px]">Hapus</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function applyHistoryItemToEditor(id) {
+      const found = userHistoryList.find(x => x.id === id);
+      if (!found) return;
+      const rawInput = document.getElementById('rawWhatsappInput');
+      if (rawInput) rawInput.value = found.rawWhatsapp || '';
+      appState.rawWhatsapp = found.rawWhatsapp || '';
+      if (found.exp && ['A', 'B', 'C', 'D', 'E', 'F'].includes(found.exp)) {
+        appState.activeExpedition = found.exp;
+      }
+      parseRawWhatsapp(found.rawWhatsapp || '', true);
+      closeHistoryModal();
+      showToast(`Dimuat: estatement ${found.nama} ${found.bank} ${found.tanggal}`, 'success');
+    }
+
+    function startEditHistory(id) {
+      const found = userHistoryList.find(x => x.id === id);
+      if (!found) return;
+      document.getElementById('editHistId').value = found.id;
+      document.getElementById('editHistNama').value = found.nama || '';
+      document.getElementById('editHistBank').value = found.bank || '';
+      document.getElementById('editHistTanggal').value = found.tanggal || '';
+      document.getElementById('editHistRawWa').value = found.rawWhatsapp || '';
+      document.getElementById('historyEditPanel').classList.remove('hidden');
+    }
+
+    function cancelEditHistory() {
+      const panel = document.getElementById('historyEditPanel');
+      if (panel) panel.classList.add('hidden');
+    }
+
+    async function saveEditedHistory() {
+      if (!currentAuthUser) return;
+      const id = document.getElementById('editHistId').value;
+      const nama = document.getElementById('editHistNama').value.trim();
+      const bank = document.getElementById('editHistBank').value.trim();
+      const tanggal = document.getElementById('editHistTanggal').value.trim();
+      const rawWhatsapp = document.getElementById('editHistRawWa').value;
+
+      const idx = userHistoryList.findIndex(x => x.id === id);
+      if (idx === -1) return;
+
+      const btn = document.getElementById('btnSaveEditHist');
+      if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+
+      const updatedItem = {
+        ...userHistoryList[idx],
+        nama,
+        bank,
+        tanggal,
+        label: `estatement ${nama} ${bank} ${tanggal}`,
+        rawWhatsapp
+      };
+
+      userHistoryList[idx] = updatedItem;
+      saveCachedHistory(currentAuthUser.account, userHistoryList);
+      renderHistoryList();
+      cancelEditHistory();
+
+      try {
+        const res = await callGasApi({
+          action: 'editHistory',
+          account: currentAuthUser.account,
+          item: updatedItem
+        });
+        if (res.status === 'ok' && Array.isArray(res.history)) {
+          userHistoryList = res.history;
+          saveCachedHistory(currentAuthUser.account, userHistoryList);
+          renderHistoryList();
+        }
+        showToast('History berhasil diperbarui di Spreadsheet!', 'success');
+      } catch (_) {
+        showToast('Tersimpan di lokal (gagal sinkron ke Spreadsheet).', 'info');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; }
+      }
+    }
+
+    async function deleteHistoryItem(id) {
+      if (!currentAuthUser) return;
+      const found = userHistoryList.find(x => x.id === id);
+      if (!found) return;
+      if (!confirm(`Hapus history "estatement ${found.nama} ${found.bank} ${found.tanggal}"?`)) return;
+
+      userHistoryList = userHistoryList.filter(x => x.id !== id);
+      saveCachedHistory(currentAuthUser.account, userHistoryList);
+      renderHistoryList();
+
+      try {
+        const res = await callGasApi({
+          action: 'deleteHistory',
+          account: currentAuthUser.account,
+          id
+        });
+        if (res.status === 'ok' && Array.isArray(res.history)) {
+          userHistoryList = res.history;
+          saveCachedHistory(currentAuthUser.account, userHistoryList);
+          renderHistoryList();
+        }
+        showToast('History berhasil dihapus!', 'info');
+      } catch (_) {
+        showToast('Dihapus dari lokal.', 'info');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initAuthAndHistory();
+    });
+	
   </script>
 </body>
 </html>
