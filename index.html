@@ -311,9 +311,9 @@
     <div class="max-w-[1600px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
       <!-- Brand Title -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-          <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
-        </div>
+        <div class="h-10 px-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm shrink-0">
+       <img src="https://marketingexata.github.io/statement/EXATA.png" alt="Logo Exata" class="h-6 w-auto object-contain" />
+     </div>
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-sm sm:text-base tracking-tight">Editor E-Statement</h1>
@@ -3006,8 +3006,8 @@
         const saldoAkhir = Math.max(500000, saldoAwal + pemasukan - pengeluaran);
 
         appState.templatesData.C.saldoAwal = formatIDRNumber(saldoAwal, false);
-        appState.templatesData.C.totalPemasukan = formatIDRNumber(pemasukan, false);
-        appState.templatesData.C.totalPengeluaran = formatIDRNumber(pengeluaran, false);
+        appState.templatesData.C.totalPemasukan = '+' + formatIDRNumber(pemasukan, false);
+        appState.templatesData.C.totalPengeluaran = '-' + formatIDRNumber(pengeluaran, false);
         appState.templatesData.C.saldoAkhir = formatIDRNumber(saldoAkhir, false);
       } else if (exp === 'D') {
         const saldoAwal = randFull(800000, 18000000);
@@ -3232,12 +3232,12 @@
                 <input type="text" value="${escapeHtml(data.saldoAwal)}" oninput="updateTemplateFieldValue('C','saldoAwal',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
               </div>
               <div>
-                <label class="block text-[10px] font-bold text-slate-600">Total Pemasukan</label>
-                <input type="text" value="${escapeHtml(data.totalPemasukan)}" oninput="updateTemplateFieldValue('C','totalPemasukan',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+                <label class="block text-[10px] font-bold text-emerald-700">Total Pemasukan</label>
+                <input type="text" value="${escapeHtml(String(data.totalPemasukan || '').trim().replace(/^\+?/, '+'))}" oninput="updateTemplateFieldValue('C','totalPemasukan',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-emerald-400 bg-emerald-50/20 text-emerald-600 text-xs font-mono font-bold" />
               </div>
               <div>
                 <label class="block text-[10px] font-bold text-slate-600">Total Pengeluaran</label>
-                <input type="text" value="${escapeHtml(data.totalPengeluaran)}" oninput="updateTemplateFieldValue('C','totalPengeluaran',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono" />
+                <input type="text" value="${escapeHtml(String(data.totalPengeluaran || '').trim().replace(/^\-?/, '-'))}" oninput="updateTemplateFieldValue('C','totalPengeluaran',this.value)" class="w-full mt-0.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-xs font-mono font-bold" />
               </div>
               <div>
                 <label class="block text-[10px] font-bold text-emerald-700">Saldo Akhir</label>
@@ -3692,9 +3692,11 @@
         if (effBlur > 0) contentEl.style.filter = `blur(${effBlur}px)`;
 
         if (exp === 'C' && box.id === 'mB') {
+          const masukStr = String(data.totalPemasukan || '').trim().replace(/^\+?/, '+');
+          const keluarStr = String(data.totalPengeluaran || '').trim().replace(/^\-?/, '-');
           contentEl.style.whiteSpace = 'normal';
           contentEl.style.lineHeight = '1.2';
-          contentEl.innerHTML = `<div class="grid grid-cols-4 items-center text-center w-full h-full"><div class="px-1 truncate">${escapeHtml(data.saldoAwal)}</div><div class="px-1 truncate">${escapeHtml(data.totalPemasukan)}</div><div class="px-1 truncate">${escapeHtml(data.totalPengeluaran)}</div><div class="px-1 truncate">${escapeHtml(data.saldoAkhir)}</div></div>`;
+          contentEl.innerHTML = `<div class="grid grid-cols-4 items-center text-center w-full h-full"><div class="px-1 truncate" style="color:#000000;">${escapeHtml(data.saldoAwal)}</div><div class="px-1 truncate" style="color:#16a34a;">${escapeHtml(masukStr)}</div><div class="px-1 truncate" style="color:#000000;">${escapeHtml(keluarStr)}</div><div class="px-1 truncate" style="color:#000000;">${escapeHtml(data.saldoAkhir)}</div></div>`;
         } else if (exp === 'D' && box.id === 'mC') {
           contentEl.style.whiteSpace = 'normal';
           contentEl.style.lineHeight = '1.2';
