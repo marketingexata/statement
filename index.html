@@ -1918,6 +1918,12 @@
             }
             appState.bcaBniUpdateV1 = true;
           }
+			if (!appState.mandiriBranchTitleCaseV1) {
+            if (appState.templatesData?.D?.p3) {
+              appState.templatesData.D.p3 = formatMandiriBranch(appState.templatesData.D.p3);
+            }
+            appState.mandiriBranchTitleCaseV1 = true;
+          }
           return true;
         }
       } catch (e) {
@@ -2656,7 +2662,7 @@
           t.pKanwil = r.kw ? kanwilLabel(r.kw, 'B') : '';
         } else if (r.main) {
           const lbl = officeLabel(r.main, exp);
-          t.p3 = (exp === 'E' || exp === 'C') ? officeNameOnly(lbl) : (exp === 'A' ? lbl.toUpperCase() : lbl);
+          t.p3 = (exp === 'E' || exp === 'C') ? officeNameOnly(lbl) : (exp === 'D' ? formatMandiriBranch(lbl) : (exp === 'A' ? lbl.toUpperCase() : lbl));
           t.pUnit = lbl;
           t.p2 = [r.main.alamat, r.main.kec ? `KEC. ${r.main.kec}` : '', r.main.kota, r.main.pos].filter(Boolean).join(', ').toUpperCase();
           t.pKanwil = r.kw ? kanwilLabel(r.kw, exp) : '';
@@ -2891,10 +2897,32 @@
     }
 
     // Bank A, C, D: Kantor Cabang otomatis diawali "KCP " (tidak digandakan bila sudah ada).
+    // Bank A: Kantor Cabang otomatis diawali "KCP "
     function withKcpPrefix(value) {
       const v = (value || '').trim();
       if (!v) return '';
-      return /^KCP(\s|$)/i.test(v) ? v : `KCP ${v}`;
+      return /^(KCP|KCU|KC|KK)(\s|$)/i.test(v) ? v : `KCP ${v}`;
+    }
+
+    // Khusus Bank Mandiri (D): "KCP"/"KCU" kapital semua, nama cabang hanya kapital di awal kata
+    function formatMandiriBranch(value) {
+      let v = String(value || '').replace(/\s+/g, ' ').trim();
+      if (!v) return '';
+      // Bersihkan kata "Bank Mandiri" jika ikut tertulis di WA
+      v = v.replace(/^(?:pt\.?\s*)?(?:bank\s+)?mandiri\b[\s.\-:]*/i, '').trim();
+      v = v.replace(/^(?:kantor\s+cabang\s+pembantu|kantor\s+cabang\s+utama|kantor\s+cabang|cabang|cab)\b[\s.\-:]*/i, '').trim();
+
+      // Deteksi awalan KCP / KCU / KC / KK / KFO (jika tidak ada, default KCP)
+      const m = v.match(/^(KCP|KCU|KC|KK|KFO|KCI)\b[\s.\-:]*(.*)$/i);
+      const prefix = m ? m[1].toUpperCase() : 'KCP';
+      const rawName = m ? m[2].trim() : v;
+
+      // Ubah nama cabang menjadi huruf besar di awal kata saja (Title Case)
+      const titleName = rawName
+        .toLowerCase()
+        .replace(/(?:^|\s|[-./])[a-z]/g, match => match.toUpperCase());
+
+      return titleName ? `${prefix} ${titleName}` : prefix;
     }
 
     function syncParsedDataToAllTemplates() {
@@ -2921,7 +2949,7 @@
       appState.templatesData.C.p5 = namaUpper;
       appState.templatesData.C.p6 = formatAddressForTemplate('C', c);
 
-      appState.templatesData.D.p3 = withKcpPrefix(p.kantorCabangRaw);
+      appState.templatesData.D.p3 = formatMandiriBranch(p.kantorCabangRaw);
       appState.templatesData.D.p4 = akun;
       appState.templatesData.D.p5 = p.namaPenggunaRaw;
 
