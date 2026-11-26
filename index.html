@@ -1415,7 +1415,7 @@
       }
       const normUrl = normalizeGithubUrl(url);
       const crossAttr = /^https?:\/\//i.test(normUrl) ? ' crossorigin="anonymous"' : '';
-      layer.innerHTML = `<img src="${escapeHtml(normUrl)}"${crossAttr} alt="Layer Tambahan BRI" class="w-full h-full object-fill pointer-events-none select-none" onerror="this.style.display='none'" />`;
+      layer.innerHTML = `<img src="${escapeHtml(normUrl)}"${crossAttr} alt="" class="w-full h-full object-fill pointer-events-none select-none" onerror="this.style.display='none'" />`;
     }
 
     function toggleBriExtraOverlay() {
@@ -3673,11 +3673,11 @@
       const bgSig = [exp, srcCfg.mode, imgUrl, customKey, layout.canvasWidth, layout.canvasHeight].join('|');
       if (bgLayer.dataset.sig !== bgSig) {
         if (srcCfg.mode === 'custom' && srcCfg.customDataUrl) {
-          bgLayer.innerHTML = `<img src="${srcCfg.customDataUrl}" alt="Template ${exp}" class="w-full h-full object-fill" />`;
+          bgLayer.innerHTML = `<img src="${srcCfg.customDataUrl}" alt="" class="w-full h-full object-fill" />`;
         } else if (srcCfg.mode === 'github' && imgUrl) {
           const crossAttr = /^https?:\/\//i.test(imgUrl) ? ' crossorigin="anonymous"' : '';
           bgLayer.innerHTML = `
-            <img src="${escapeHtml(imgUrl)}"${crossAttr} alt="Template GitHub ${exp}" class="w-full h-full object-fill" onerror="this.style.display='none'; document.getElementById('fallbackBuiltinBg').style.display='block';" />
+            <img src="${escapeHtml(imgUrl)}"${crossAttr} alt="" class="w-full h-full object-fill" onerror="this.style.display='none'; document.getElementById('fallbackBuiltinBg').style.display='block';" />
             <div id="fallbackBuiltinBg" style="display:none;" class="w-full h-full">${getScaledBuiltinTemplateHTML(exp)}</div>
           `;
         } else {
@@ -4564,7 +4564,8 @@
       clonedCanvasEl.style.boxShadow = 'none';
 
       clonedCanvasEl.querySelectorAll('.selected-box').forEach(el => el.classList.remove('selected-box'));
-      clonedCanvasEl.querySelectorAll('.field-badge, .resize-handle, .snap-line-x, .snap-line-y, .user-guide-line').forEach(el => el.remove());
+	  clonedCanvasEl.querySelectorAll('.field-badge, .resize-handle, .snap-line-x, .snap-line-y, .user-guide-line').forEach(el => el.remove());
+      clonedCanvasEl.querySelectorAll('img').forEach(img => img.setAttribute('alt', ''));
 
       exportHost.appendChild(clonedCanvasEl);
       document.body.appendChild(exportHost);
@@ -4574,8 +4575,19 @@
           await Promise.all(Object.values(FONT_OPTIONS).flatMap(f => [`400 20px ${f.css}`, `700 20px ${f.css}`, `${f.weight} 20px ${f.css}`].map(s => document.fonts.load(s).catch(() => {}))));
         }
         if (document.fonts && document.fonts.ready) await document.fonts.ready;
-        await new Promise(r => setTimeout(r, 80));
 
+		await Promise.all(
+		  Array.from(clonedCanvasEl.querySelectorAll('img')).map(img =>
+		    img.complete && img.naturalWidth
+		      ? (img.decode ? img.decode().catch(() => {}) : Promise.resolve())
+		      : new Promise(res => {
+		          img.addEventListener('load', res, { once: true });
+		          img.addEventListener('error', res, { once: true });
+		        })
+		  )
+		);
+		
+		await new Promise(r => setTimeout(r, 80));
         // Ukur posisi teks dari browser (identik dengan preview), lalu sembunyikan teks
         // di salinan agar tidak tergambar dua kali oleh html2canvas.
         const textRuns = collectFieldTextRuns(clonedCanvasEl);
